@@ -1,12 +1,22 @@
-import { Controller, Get } from '@nestjs/common';
-import { AppService } from './app.service';
+import { Controller, Get, UseGuards, Req } from '@nestjs/common';
+import { AuthGuard } from './auth/auth.guard';
+import { AuthService } from './auth/auth.service';
+import type { Request } from 'express';
 
-@Controller()
-export class AppController {
-  constructor(private readonly appService: AppService) {}
+interface AuthenticatedRequest extends Request {
+  user: unknown;
+  session: unknown;
+}
 
+@Controller('profile')
+export class ProfileController {
+  constructor(private readonly authService: AuthService) {}
+  @UseGuards(AuthGuard)
   @Get()
-  getHello(): string {
-    return this.appService.getHello();
+  getProfile(@Req() req: AuthenticatedRequest): {
+    message: string;
+    user: unknown;
+  } {
+    return { message: 'Você está logado!', user: req.user };
   }
 }

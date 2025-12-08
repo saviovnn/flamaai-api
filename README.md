@@ -23,7 +23,52 @@
 
 ## Description
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+Backend da aplicação FlamaAI construído com [NestJS](https://github.com/nestjs/nest) e [Better Auth](https://www.better-auth.com/) para autenticação.
+
+## Tecnologias
+
+- **NestJS** - Framework Node.js progressivo
+- **Better Auth** - Sistema de autenticação moderno
+- **MongoDB** - Banco de dados NoSQL
+- **Mongoose** - ODM para MongoDB
+- **TypeScript** - Superset tipado do JavaScript
+
+## Pré-requisitos
+
+Antes de começar, certifique-se de ter instalado:
+
+- Node.js (v18 ou superior)
+- pnpm
+- MongoDB (rodando localmente ou uma instância remota)
+
+## Configuração
+
+1. Clone o repositório
+2. Instale as dependências:
+
+```bash
+$ pnpm install
+```
+
+3. Crie um arquivo `.env` na raiz do projeto (use `.env.example` como referência):
+
+```bash
+MONGO_URI=mongodb://localhost:27017/flamaai
+PORT=3000
+```
+
+4. Certifique-se de que o MongoDB está rodando:
+
+```bash
+# macOS (com Homebrew)
+$ brew services start mongodb-community
+
+# Linux
+$ sudo systemctl start mongod
+
+# Windows
+$ net start MongoDB
+```
 
 ## Project setup
 
@@ -43,6 +88,68 @@ $ pnpm run start:dev
 # production mode
 $ pnpm run start:prod
 ```
+
+## API de Autenticação
+
+O backend utiliza Better Auth com as seguintes rotas:
+
+### Registro
+```bash
+POST /api/auth/sign-up/email
+Content-Type: application/json
+
+{
+  "email": "usuario@exemplo.com",
+  "password": "senha123",
+  "name": "Nome do Usuário"
+}
+```
+
+### Login
+```bash
+POST /api/auth/sign-in/email
+Content-Type: application/json
+
+{
+  "email": "usuario@exemplo.com",
+  "password": "senha123"
+}
+```
+
+### Logout
+```bash
+POST /api/auth/sign-out
+```
+
+### Obter Sessão
+```bash
+GET /api/auth/get-session
+```
+
+### Login Social (Google)
+```bash
+POST /api/auth/sign-in/social
+Content-Type: application/json
+
+{
+  "provider": "google"
+}
+
+# Resposta:
+{
+  "url": "https://accounts.google.com/o/oauth2/auth?...",
+  "redirect": true
+}
+```
+
+**Fluxo completo:**
+1. O frontend faz POST para `/api/auth/sign-in/social` com o provider
+2. O backend retorna uma URL do Google OAuth
+3. O frontend redireciona o usuário para essa URL
+4. O usuário faz login no Google
+5. O Google redireciona de volta para `http://localhost:3000/api/auth/callback/google`
+6. O backend processa o callback e cria a sessão
+7. O backend redireciona o usuário para o frontend
 
 ## Run tests
 
