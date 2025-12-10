@@ -1,4 +1,3 @@
-// src/auth/auth.guard.ts
 import {
   CanActivate,
   ExecutionContext,
@@ -6,7 +5,13 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import type { Request, Response } from 'express';
+import type { Request } from 'express';
+import type { BetterAuthUser, BetterAuthSession } from './auth.types';
+
+interface SessionResponse {
+  user: BetterAuthUser;
+  session: BetterAuthSession;
+}
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -16,17 +21,17 @@ export class AuthGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<Request>();
 
     // Verifica a sessão usando a API do Better Auth
-    const session = await this.authService.auth.api.getSession({
+    const sessionData = (await this.authService.auth.api.getSession({
       headers: request.headers as unknown as Headers,
-    });
+    })) as SessionResponse | null;
 
-    if (!session) {
-      throw new UnauthorizedException();
+    if (!sessionData) {
+      throw new UnauthorizedException('Sessão inválida ou expirada');
     }
 
     // Anexa o usuário e a sessão ao objeto de request para uso posterior
-    (request as Record<string, any>)['user'] = session.user;
-    (request as Record<string, any>)['session'] = session.session;
+    request.user = sessionData.user;
+    request.session = sessionData.session;
 
     return true;
   }

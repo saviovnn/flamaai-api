@@ -1,19 +1,27 @@
-// src/auth/auth.controller.ts
-import { All, Controller, Req, Res } from '@nestjs/common';
+import { All, Body, Controller, Post, Req, Res } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import type { Request, Response } from 'express';
 import { toNodeHandler } from 'better-auth/node';
+import { RegistrarDto, EntrarDto } from './dto';
 
 @Controller('api/auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  // Captura qualquer método (GET, POST) que vá para /api/auth/*
-  @All('*path')
+  @Post('registrar')
+  async registrar(@Body() body: RegistrarDto) {
+    return await this.authService.registrar(body);
+  }
+
+  @Post('entrar')
+  async entrar(@Body() body: EntrarDto) {
+    return await this.authService.entrar(body);
+  }
+
+  @All('*')
   async handleAuth(@Req() req: Request, @Res() res: Response) {
-    // Converte o handler do Better Auth para o padrão Node/Express que o Nest usa
+    // Converte o handler do Better Auth para o padrão Node/Express
     const handler = toNodeHandler(this.authService.auth);
-    // O toNodeHandler envia a resposta diretamente, não retorna um valor
     await handler(req, res);
   }
 }

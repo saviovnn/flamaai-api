@@ -1,18 +1,17 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { MongooseModule } from '@nestjs/mongoose';
+import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
+import { DatabaseModule } from './db/app.module';
 
 @Module({
   imports: [
+    // Carrega as variáveis de ambiente (.env)
     ConfigModule.forRoot({ isGlobal: true }),
-    MongooseModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        uri: configService.get<string>('MONGO_URI'),
-      }),
-      inject: [ConfigService],
-    }),
+
+    // Conexão com o Banco (Postgres + Drizzle)
+    DatabaseModule,
+
+    // Outros módulos
     AuthModule,
   ],
 })
