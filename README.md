@@ -29,8 +29,8 @@ Backend da aplicação FlamaAI construído com [NestJS](https://github.com/nestj
 
 - **NestJS** - Framework Node.js progressivo
 - **Better Auth** - Sistema de autenticação moderno
-- **MongoDB** - Banco de dados NoSQL
-- **Mongoose** - ODM para MongoDB
+- **PostgreSQL** - Banco de dados relacional
+- **Drizzle ORM** - ORM TypeScript-first para SQL
 - **TypeScript** - Superset tipado do JavaScript
 
 ## Pré-requisitos
@@ -39,7 +39,7 @@ Antes de começar, certifique-se de ter instalado:
 
 - Node.js (v18 ou superior)
 - pnpm
-- MongoDB (rodando localmente ou uma instância remota)
+- PostgreSQL (rodando localmente ou uma instância remota)
 
 ## Configuração
 
@@ -50,24 +50,38 @@ Antes de começar, certifique-se de ter instalado:
 $ pnpm install
 ```
 
-3. Crie um arquivo `.env` na raiz do projeto (use `.env.example` como referência):
+3. Crie um arquivo `.env` na raiz do projeto:
 
 ```bash
-MONGO_URI=mongodb://localhost:27017/flamaai
-PORT=3000
+# Database
+DATABASE_URL=postgresql://user:password@localhost:5432/flamaai
+
+# Application
+BASE_URL=http://localhost:3000
+NODE_ENV=development
+
+# Gov.br OAuth (ver GOVBR_SETUP.md para mais detalhes)
+GOVBR_CLIENT_ID=seu_client_id_aqui
+GOVBR_CLIENT_SECRET=seu_client_secret_aqui
 ```
 
-4. Certifique-se de que o MongoDB está rodando:
+4. Certifique-se de que o PostgreSQL está rodando:
 
 ```bash
 # macOS (com Homebrew)
-$ brew services start mongodb-community
+$ brew services start postgresql
 
 # Linux
-$ sudo systemctl start mongod
+$ sudo systemctl start postgresql
 
 # Windows
-$ net start MongoDB
+# Use o pgAdmin ou inicie o serviço PostgreSQL
+```
+
+5. Execute as migrations do banco de dados:
+
+```bash
+$ pnpm run db:push
 ```
 
 ## Project setup
@@ -126,30 +140,25 @@ POST /api/auth/sign-out
 GET /api/auth/get-session
 ```
 
-### Login Social (Google)
+### Login Social (Gov.br)
 ```bash
-POST /api/auth/sign-in/social
-Content-Type: application/json
-
-{
-  "provider": "google"
-}
-
-# Resposta:
-{
-  "url": "https://accounts.google.com/o/oauth2/auth?...",
-  "redirect": true
-}
+GET /api/auth/sign-in/social?provider=govbr
 ```
 
 **Fluxo completo:**
-1. O frontend faz POST para `/api/auth/sign-in/social` com o provider
-2. O backend retorna uma URL do Google OAuth
-3. O frontend redireciona o usuário para essa URL
-4. O usuário faz login no Google
-5. O Google redireciona de volta para `http://localhost:3000/api/auth/callback/google`
-6. O backend processa o callback e cria a sessão
-7. O backend redireciona o usuário para o frontend
+1. O frontend redireciona o usuário para `/api/auth/sign-in/social?provider=govbr`
+2. O backend redireciona para a página de login do Gov.br
+3. O usuário faz login no Gov.br
+4. O Gov.br redireciona de volta para `http://localhost:3000/api/auth/callback/govbr`
+5. O backend processa o callback e cria a sessão com os dados do usuário
+6. O backend redireciona o usuário para o frontend
+
+**Campos extras do Gov.br:**
+- CPF do usuário
+- Nível de confiabilidade (gold, silver, bronze)
+- Selos de confiabilidade (array)
+
+Para mais detalhes sobre a configuração do Gov.br, consulte o arquivo [GOVBR_SETUP.md](./GOVBR_SETUP.md).
 
 ## Run tests
 

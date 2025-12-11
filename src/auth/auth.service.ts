@@ -25,19 +25,32 @@ export class AuthService {
     this.auth = betterAuth({
       database: drizzleAdapter(this.db, {
         provider: 'pg',
+        // Mapeamos os MODELS do BetterAuth para as tabelas do Drizzle
         schema: {
           user: schema.usuarios,
           session: schema.sessoes,
           account: schema.contas,
           verification: schema.verificacoes,
         },
-        usePlural: false,
+        usePlural: false, // Importante pois definimos nomes manuais ('usuarios', etc)
       }),
+
       baseURL: process.env.BASE_URL || 'http://localhost:3000',
       trustedOrigins: ['http://localhost:3000', 'http://localhost:5173'],
+
+      // Definição dos campos extras para o TypeScript entender o retorno
+      user: {
+        additionalFields: {
+          cpf: { type: 'string', required: false },
+          govbrLevel: { type: 'string', required: false },
+          govbrReliabilities: { type: 'string', required: false }, // jsonb retorna string/obj dependendo do driver
+        },
+      },
+
       emailAndPassword: {
         enabled: true,
       },
+
       advanced: {
         useSecureCookies: process.env.NODE_ENV === 'production',
       },

@@ -8,6 +8,10 @@ export interface BetterAuthUser {
   image?: string | null;
   createdAt: Date;
   updatedAt: Date;
+  // Campos extras do Gov.br
+  cpf?: string;
+  govbrLevel?: string; // "gold", "silver", "bronze"
+  govbrReliabilities?: string | any[]; // JSON dos selos de confiabilidade
 }
 
 export interface BetterAuthSession {
