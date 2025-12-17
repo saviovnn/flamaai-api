@@ -7,11 +7,10 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import {
   BetterAuthResponse,
   BetterAuthErrorResponse,
-  BetterAuthApiResponse,
-  RegistrarResponse,
-  EntrarResponse,
+  RegisterResponse,
+  LoginResponse,
 } from './auth.types';
-import { RegistrarDto, EntrarDto } from './dto';
+import { RegisterDto, LoginDto } from './dto';
 
 @Injectable()
 export class AuthService {
@@ -26,10 +25,10 @@ export class AuthService {
       database: drizzleAdapter(this.db, {
         provider: 'pg',
         schema: {
-          user: schema.usuarios,
-          session: schema.sessoes,
-          account: schema.contas,
-          verification: schema.verificacoes,
+          user: schema.users,
+          session: schema.sessions,
+          account: schema.accounts,
+          verification: schema.verifications,
         },
         usePlural: false,
       }),
@@ -44,7 +43,7 @@ export class AuthService {
     });
   }
 
-  async registrar(body: RegistrarDto): Promise<RegistrarResponse> {
+  async register(body: RegisterDto): Promise<RegisterResponse> {
     try {
       const response = await fetch(
         `${process.env.BASE_URL || 'http://localhost:3000'}/api/auth/sign-up/email`,
@@ -55,36 +54,50 @@ export class AuthService {
           },
           body: JSON.stringify({
             email: body.email,
-            password: body.senha,
-            name: body.nome,
+            password: body.password,
+            name: body.name,
           }),
         },
       );
 
-      const data =
-        (await response.json()) as BetterAuthApiResponse<BetterAuthResponse>;
+      const data = await response.json();
 
       if (!response.ok) {
+        // Log para debug (pode remover depois)
+        console.log(
+          'Better Auth Error Response:',
+          JSON.stringify(data, null, 2),
+        );
+
         const errorData = data as BetterAuthErrorResponse;
+        // Better Auth pode retornar o erro em diferentes formatos
+        const dataAny = data as Record<string, unknown>;
+        const errorMessage =
+          errorData?.error ||
+          errorData?.message ||
+          (dataAny?.message as string) ||
+          ((dataAny?.error as Record<string, unknown>)?.message as string) ||
+          (typeof data === 'string' ? data : 'Erro ao registrar usuário');
+
         return {
-          error: errorData.error || 'Erro ao registrar usuário',
+          error: errorMessage,
         };
       }
 
       const successData = data as BetterAuthResponse;
       return {
-        sucesso: true,
-        usuario: successData.user,
+        success: true,
+        user: successData.user,
       };
     } catch (error) {
       return {
         error: 'Erro ao registrar usuário',
-        detalhes: error instanceof Error ? error.message : 'Erro desconhecido',
+        details: error instanceof Error ? error.message : 'Erro desconhecido',
       };
     }
   }
 
-  async entrar(body: EntrarDto): Promise<EntrarResponse> {
+  async login(body: LoginDto): Promise<LoginResponse> {
     try {
       const response = await fetch(
         `${process.env.BASE_URL || 'http://localhost:3000'}/api/auth/sign-in/email`,
@@ -95,37 +108,51 @@ export class AuthService {
           },
           body: JSON.stringify({
             email: body.email,
-            password: body.senha,
+            password: body.password,
           }),
         },
       );
 
-      const data =
-        (await response.json()) as BetterAuthApiResponse<BetterAuthResponse>;
+      const data = await response.json();
 
       if (!response.ok) {
+        // Log para debug (pode remover depois)
+        console.log(
+          'Better Auth Error Response:',
+          JSON.stringify(data, null, 2),
+        );
+
         const errorData = data as BetterAuthErrorResponse;
+        // Better Auth pode retornar o erro em diferentes formatos
+        const dataAny = data as Record<string, unknown>;
+        const errorMessage =
+          errorData?.error ||
+          errorData?.message ||
+          (dataAny?.message as string) ||
+          ((dataAny?.error as Record<string, unknown>)?.message as string) ||
+          (typeof data === 'string' ? data : 'Email ou senha inválidos');
+
         return {
-          error: errorData.error || 'Email ou senha inválidos',
+          error: errorMessage,
         };
       }
 
       const successData = data as BetterAuthResponse;
       return {
-        sucesso: true,
-        usuario: successData.user,
-        sessao: successData.session,
+        success: true,
+        user: successData.user,
+        session: successData.session,
       };
     } catch (error) {
       return {
         error: 'Erro ao fazer login',
-        detalhes: error instanceof Error ? error.message : 'Erro desconhecido',
+        details: error instanceof Error ? error.message : 'Erro desconhecido',
       };
     }
   }
 
   async findAll() {
-    return await this.db.query.usuarios.findMany({
+    return await this.db.query.users.findMany({
       columns: {
         id: true,
         name: true,

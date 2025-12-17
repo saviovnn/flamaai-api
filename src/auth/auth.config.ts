@@ -2,23 +2,23 @@
 
 export const betterAuthFieldMapping = {
   user: {
-    tableName: 'usuarios',
+    tableName: 'users',
     fields: {
       id: 'id',
-      name: 'nome',
+      name: 'name',
       email: 'email',
-      emailVerified: 'email_verificado',
-      image: 'imagem',
-      password: 'senha',
+      emailVerified: 'email_verified',
+      image: 'image',
+      password: 'password',
       createdAt: 'created_at',
       updatedAt: 'updated_at',
     },
   },
   session: {
-    tableName: 'sessoes',
+    tableName: 'sessions',
     fields: {
       id: 'id',
-      userId: 'usuario_id',
+      userId: 'user_id',
       expiresAt: 'expires_at',
       token: 'token',
       ipAddress: 'ip_address',
@@ -28,10 +28,10 @@ export const betterAuthFieldMapping = {
     },
   },
   account: {
-    tableName: 'contas',
+    tableName: 'accounts',
     fields: {
       id: 'id',
-      userId: 'usuario_id',
+      userId: 'user_id',
       accountId: 'account_id',
       providerId: 'provider_id',
       accessToken: 'access_token',
@@ -44,7 +44,7 @@ export const betterAuthFieldMapping = {
     },
   },
   verification: {
-    tableName: 'verificacoes',
+    tableName: 'verifications',
     fields: {
       id: 'id',
       identifier: 'identifier',

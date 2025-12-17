@@ -2,20 +2,21 @@ import { All, Body, Controller, Post, Req, Res } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import type { Request, Response } from 'express';
 import { toNodeHandler } from 'better-auth/node';
-import { RegistrarDto, EntrarDto } from './dto';
+import { RegisterDto, LoginDto } from './dto';
+import { RegisterResponse, LoginResponse } from './auth.types';
 
 @Controller('api/auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Post('registrar')
-  async registrar(@Body() body: RegistrarDto) {
-    return await this.authService.registrar(body);
+  @Post('register')
+  async register(@Body() body: RegisterDto): Promise<RegisterResponse> {
+    return await this.authService.register(body);
   }
 
-  @Post('entrar')
-  async entrar(@Body() body: EntrarDto) {
-    return await this.authService.entrar(body);
+  @Post('login')
+  async login(@Body() body: LoginDto): Promise<LoginResponse> {
+    return await this.authService.login(body);
   }
 
   @All('*')

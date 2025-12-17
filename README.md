@@ -126,31 +126,6 @@ POST /api/auth/sign-out
 GET /api/auth/get-session
 ```
 
-### Login Social (Google)
-```bash
-POST /api/auth/sign-in/social
-Content-Type: application/json
-
-{
-  "provider": "google"
-}
-
-# Resposta:
-{
-  "url": "https://accounts.google.com/o/oauth2/auth?...",
-  "redirect": true
-}
-```
-
-**Fluxo completo:**
-1. O frontend faz POST para `/api/auth/sign-in/social` com o provider
-2. O backend retorna uma URL do Google OAuth
-3. O frontend redireciona o usuário para essa URL
-4. O usuário faz login no Google
-5. O Google redireciona de volta para `http://localhost:3000/api/auth/callback/google`
-6. O backend processa o callback e cria a sessão
-7. O backend redireciona o usuário para o frontend
-
 ## Run tests
 
 ```bash

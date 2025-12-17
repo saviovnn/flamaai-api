@@ -34,29 +34,29 @@ export interface BetterAuthErrorResponse {
 export type BetterAuthApiResponse<T> = T | BetterAuthErrorResponse;
 
 // Tipos de retorno dos métodos
-export interface RegistrarSucessoResponse {
-  sucesso: true;
-  usuario: BetterAuthUser;
+export interface RegisterSuccessResponse {
+  success: true;
+  user: BetterAuthUser;
 }
 
-export interface RegistrarErroResponse {
+export interface RegisterErrorResponse {
   error: string;
-  detalhes?: string;
+  details?: string;
 }
 
-export type RegistrarResponse =
-  | RegistrarSucessoResponse
-  | RegistrarErroResponse;
+export type RegisterResponse =
+  | RegisterSuccessResponse
+  | RegisterErrorResponse;
 
-export interface EntrarSucessoResponse {
-  sucesso: true;
-  usuario: BetterAuthUser;
-  sessao: BetterAuthSession;
+export interface LoginSuccessResponse {
+  success: true;
+  user: BetterAuthUser;
+  session: BetterAuthSession;
 }
 
-export interface EntrarErroResponse {
+export interface LoginErrorResponse {
   error: string;
-  detalhes?: string;
+  details?: string;
 }
 
-export type EntrarResponse = EntrarSucessoResponse | EntrarErroResponse;
+export type LoginResponse = LoginSuccessResponse | LoginErrorResponse;
