@@ -16,7 +16,7 @@ export class WeatherController {
     return await this.weatherService.getWeatherByCoordinates(
       Number(body.lat),
       Number(body.lng),
-      body.type === 'weather' ? true : false,
+      body.type,
     );
   }
 }

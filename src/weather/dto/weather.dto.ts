@@ -2,14 +2,14 @@ import { z } from 'zod';
 
 // Mensagens de erro personalizadas
 const typeErrorMessage =
-  'O campo "type" é obrigatório e deve ser: "weather" ou "air"';
+  'O campo "type" é obrigatório e deve ser: "weather" ou "air" ou "all"';
 const latErrorMessage = 'O campo "lat" deve ser um número';
 const lngErrorMessage = 'O campo "lng" deve ser um número';
 const latRangeMessage = 'O campo "lat" deve estar entre -90 e 90';
 const lngRangeMessage = 'O campo "lng" deve estar entre -180 e 180';
 
 export const weatherSchema = z.object({
-  type: z.enum(['weather', 'air'], { message: typeErrorMessage }),
+  type: z.enum(['weather', 'air', 'all'], { message: typeErrorMessage }),
   lat: z
     .number({ message: latErrorMessage })
     .min(-90, { message: latRangeMessage })

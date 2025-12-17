@@ -191,10 +191,10 @@ export class WeatherService {
   async getWeatherByCoordinates(
     lat: number,
     lng: number,
-    type: boolean,
+    type: 'weather' | 'air' | 'all',
   ): Promise<WeatherResponseWithFuture> {
     try {
-      if (type) {
+      if (type === 'weather') {
         const weatherFuture = await this.getWeatherFuture(lat, lng);
         const weatherPast = await this.getWeatherPast(lat, lng);
 
@@ -202,7 +202,7 @@ export class WeatherService {
           weatherFuture_7d: [weatherFuture],
           weatherPast_7d: [weatherPast],
         };
-      } else {
+      } else if (type === 'air') {
         const airPast = await this.getAirPast(lat, lng);
         const airFuture = await this.getAirFuture(lat, lng);
 
@@ -216,6 +216,26 @@ export class WeatherService {
           airFuture_7d: [airFutureProcessed],
           airPast_7d: [airPastProcessed],
         };
+      } else if (type === 'all') {
+        const weatherFuture = await this.getWeatherFuture(lat, lng);
+        const weatherPast = await this.getWeatherPast(lat, lng);
+        const airPast = await this.getAirPast(lat, lng);
+        const airFuture = await this.getAirFuture(lat, lng);
+
+        // Processar dados de qualidade do ar de horário para diário
+        const airPastProcessed =
+          this.processAirToDailyAverage<AirResponsePast>(airPast);
+        const airFutureProcessed =
+          this.processAirToDailyAverage<AirResponseFuture>(airFuture);
+
+        return {
+          weatherFuture_7d: [weatherFuture],
+          weatherPast_7d: [weatherPast],
+          airFuture_7d: [airFutureProcessed],
+          airPast_7d: [airPastProcessed],
+        };
+      } else {
+        throw new Error('Tipo de dados inválido');
       }
     } catch (error) {
       this.logger.error(error);
