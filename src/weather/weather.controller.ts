@@ -1,7 +1,9 @@
 import { Controller, Post, Body } from '@nestjs/common';
 import { WeatherService } from './weather.service';
-import { WeatherDto } from './dto';
-import { WeatherResponseWithFuture } from './weather.service';
+import { weatherSchema } from './dto';
+import type { WeatherDto } from './dto';
+import type { WeatherResponseWithFuture } from './weather.service';
+import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 
 @Controller('api/weather')
 export class WeatherController {
@@ -9,11 +11,12 @@ export class WeatherController {
 
   @Post('by-coordinates')
   async getWeatherByCoordinates(
-    @Body() body: WeatherDto,
+    @Body(new ZodValidationPipe(weatherSchema)) body: WeatherDto,
   ): Promise<WeatherResponseWithFuture> {
     return await this.weatherService.getWeatherByCoordinates(
       body.lat,
       body.lng,
+      body.type === 'weather' ? true : false,
     );
   }
 }

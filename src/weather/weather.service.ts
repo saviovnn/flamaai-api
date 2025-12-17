@@ -174,10 +174,10 @@ interface AirResponsePast {
   };
 }
 export interface WeatherResponseWithFuture {
-  weatherFuture_7d: WeatherResponseFuture[];
-  weatherPast_7d: WeatherResponsePast[];
-  airFuture_7d: AirResponseFuture[];
-  airPast_7d: AirResponsePast[];
+  weatherFuture_7d?: WeatherResponseFuture[];
+  weatherPast_7d?: WeatherResponsePast[];
+  airFuture_7d?: AirResponseFuture[];
+  airPast_7d?: AirResponsePast[];
 }
 @Injectable()
 export class WeatherService {
@@ -191,24 +191,36 @@ export class WeatherService {
   async getWeatherByCoordinates(
     lat: number,
     lng: number,
+    type: boolean,
   ): Promise<WeatherResponseWithFuture> {
-    const weatherFuture = await this.getWeatherFuture(lat, lng);
-    const weatherPast = await this.getWeatherPast(lat, lng);
-    const airPast = await this.getAirPast(lat, lng);
-    const airFuture = await this.getAirFuture(lat, lng);
+    try {
+      if (type) {
+        const weatherFuture = await this.getWeatherFuture(lat, lng);
+        const weatherPast = await this.getWeatherPast(lat, lng);
 
-    // Processar dados de qualidade do ar de horário para diário
-    const airPastProcessed =
-      this.processAirToDailyAverage<AirResponsePast>(airPast);
-    const airFutureProcessed =
-      this.processAirToDailyAverage<AirResponseFuture>(airFuture);
+        return {
+          weatherFuture_7d: [weatherFuture],
+          weatherPast_7d: [weatherPast],
+        };
+      } else {
+        const airPast = await this.getAirPast(lat, lng);
+        const airFuture = await this.getAirFuture(lat, lng);
 
-    return {
-      weatherFuture_7d: [weatherFuture],
-      weatherPast_7d: [weatherPast],
-      airFuture_7d: [airFutureProcessed],
-      airPast_7d: [airPastProcessed],
-    };
+        // Processar dados de qualidade do ar de horário para diário
+        const airPastProcessed =
+          this.processAirToDailyAverage<AirResponsePast>(airPast);
+        const airFutureProcessed =
+          this.processAirToDailyAverage<AirResponseFuture>(airFuture);
+
+        return {
+          airFuture_7d: [airFutureProcessed],
+          airPast_7d: [airPastProcessed],
+        };
+      }
+    } catch (error) {
+      this.logger.error(error);
+      throw new Error('Erro ao buscar dados meteorológicos');
+    }
   }
 
   private processAirToDailyAverage<
