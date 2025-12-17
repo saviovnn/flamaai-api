@@ -206,8 +206,8 @@ export class WeatherService {
     return {
       weatherFuture_7d: [weatherFuture],
       weatherPast_7d: [weatherPast],
-      airPast_7d: [airPastProcessed],
       airFuture_7d: [airFutureProcessed],
+      airPast_7d: [airPastProcessed],
     };
   }
 
