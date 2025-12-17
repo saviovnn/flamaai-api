@@ -1,4 +1,17 @@
-import { pgTable, text, timestamp, boolean } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  text,
+  timestamp,
+  boolean,
+  serial,
+  varchar,
+  doublePrecision,
+  geometry,
+  index,
+  integer,
+  check,
+} from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 export const users = pgTable('users', {
   id: text('id').primaryKey(),
@@ -49,3 +62,46 @@ export const verifications = pgTable('verifications', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
+
+export const spatialRefSys = pgTable(
+  'spatial_ref_sys',
+  {
+    srid: integer('srid').primaryKey().notNull(),
+    authName: varchar('auth_name', { length: 256 }),
+    authSrid: integer('auth_srid'),
+    srtext: varchar('srtext', { length: 2048 }),
+    proj4text: varchar('proj4text', { length: 2048 }),
+  },
+  () => [
+    check('spatial_ref_sys_srid_check', sql`(srid > 0) AND (srid <= 998999)`),
+  ],
+);
+
+export const municipiosIbge = pgTable(
+  'municipios_ibge',
+  {
+    gid: serial('gid').primaryKey().notNull(),
+    cdMun: varchar('cd_mun', { length: 7 }),
+    nmMun: varchar('nm_mun', { length: 100 }),
+    cdRgi: varchar('cd_rgi', { length: 6 }),
+    nmRgi: varchar('nm_rgi', { length: 100 }),
+    cdRgint: varchar('cd_rgint', { length: 4 }),
+    nmRgint: varchar('nm_rgint', { length: 100 }),
+    cdUf: varchar('cd_uf', { length: 2 }),
+    nmUf: varchar('nm_uf', { length: 50 }),
+    siglaUf: varchar('sigla_uf', { length: 2 }),
+    cdRegia: varchar('cd_regia', { length: 1 }),
+    nmRegia: varchar('nm_regia', { length: 20 }),
+    siglaRg: varchar('sigla_rg', { length: 2 }),
+    cdConcu: varchar('cd_concu', { length: 7 }),
+    nmConcu: varchar('nm_concu', { length: 100 }),
+    areaKm2: doublePrecision('area_km2'),
+    geom: geometry('geom', { type: 'multipolygon', srid: 4674 }),
+  },
+  (table) => [
+    index('municipios_ibge_geom_idx').using(
+      'gist',
+      table.geom.asc().nullsLast().op('gist_geometry_ops_2d'),
+    ),
+  ],
+);
