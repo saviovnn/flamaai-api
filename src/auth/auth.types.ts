@@ -60,3 +60,31 @@ export interface LoginErrorResponse {
 }
 
 export type LoginResponse = LoginSuccessResponse | LoginErrorResponse;
+
+export interface ForgotPasswordSuccessResponse {
+  success: true;
+  message: string;
+}
+
+export interface ForgotPasswordErrorResponse {
+  error: string;
+  details?: string;
+}
+
+export type ForgotPasswordResponse =
+  | ForgotPasswordSuccessResponse
+  | ForgotPasswordErrorResponse;
+
+export interface ResetPasswordSuccessResponse {
+  success: true;
+  message: string;
+}
+
+export interface ResetPasswordErrorResponse {
+  error: string;
+  details?: string;
+}
+
+export type ResetPasswordResponse =
+  | ResetPasswordSuccessResponse
+  | ResetPasswordErrorResponse;
