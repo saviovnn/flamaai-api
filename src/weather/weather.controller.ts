@@ -14,8 +14,8 @@ export class WeatherController {
     @Body(new ZodValidationPipe(weatherSchema)) body: WeatherDto,
   ): Promise<WeatherResponseWithFuture> {
     return await this.weatherService.getWeatherByCoordinates(
-      body.lat,
-      body.lng,
+      Number(body.lat),
+      Number(body.lng),
       body.type === 'weather' ? true : false,
     );
   }
