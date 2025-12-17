@@ -1,16 +1,16 @@
 import { pgTable, text, timestamp, boolean } from 'drizzle-orm/pg-core';
 
-export const usuarios = pgTable('usuarios', {
+export const users = pgTable('users', {
   id: text('id').primaryKey(),
-  name: text('nome').notNull(),
+  name: text('name').notNull(),
   email: text('email').notNull().unique(),
-  emailVerified: boolean('email_verificado').notNull().default(false),
-  image: text('imagem'),
+  emailVerified: boolean('email_verified').notNull().default(false),
+  image: text('image'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
-export const sessoes = pgTable('sessoes', {
+export const sessions = pgTable('sessions', {
   id: text('id').primaryKey(),
   expiresAt: timestamp('expires_at').notNull(),
   token: text('token').notNull().unique(),
@@ -18,18 +18,18 @@ export const sessoes = pgTable('sessoes', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
   ipAddress: text('ip_address'),
   userAgent: text('user_agent'),
-  userId: text('usuario_id')
+  userId: text('user_id')
     .notNull()
-    .references(() => usuarios.id, { onDelete: 'cascade' }),
+    .references(() => users.id, { onDelete: 'cascade' }),
 });
 
-export const contas = pgTable('contas', {
+export const accounts = pgTable('accounts', {
   id: text('id').primaryKey(),
   accountId: text('account_id').notNull(),
   providerId: text('provider_id').notNull(),
-  userId: text('usuario_id')
+  userId: text('user_id')
     .notNull()
-    .references(() => usuarios.id, { onDelete: 'cascade' }),
+    .references(() => users.id, { onDelete: 'cascade' }),
   accessToken: text('access_token'),
   refreshToken: text('refresh_token'),
   idToken: text('id_token'),
@@ -41,7 +41,7 @@ export const contas = pgTable('contas', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
-export const verificacoes = pgTable('verificacoes', {
+export const verifications = pgTable('verifications', {
   id: text('id').primaryKey(),
   identifier: text('identifier').notNull(),
   value: text('value').notNull(),
