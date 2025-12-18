@@ -49,6 +49,21 @@ export class AuthService {
       trustedOrigins: ['http://localhost:3000', 'http://localhost:5173'],
       emailAndPassword: {
         enabled: true,
+        password: {
+          // Configura o Better Auth para usar bcrypt (mesmo que usamos no reset)
+          hash: async (password: string) => {
+            return await bcrypt.hash(password, 10);
+          },
+          verify: async ({
+            hash,
+            password,
+          }: {
+            hash: string;
+            password: string;
+          }) => {
+            return await bcrypt.compare(password, hash);
+          },
+        },
       },
       advanced: {
         useSecureCookies: process.env.NODE_ENV === 'production',
@@ -120,7 +135,29 @@ export class AuthService {
         },
       );
 
-      const data = await response.json();
+      // Verifica se a resposta tem conteúdo antes de tentar fazer parse
+      const contentType = response.headers.get('content-type');
+      const text = await response.text();
+
+      let data: unknown;
+      if (contentType?.includes('application/json') && text) {
+        try {
+          data = JSON.parse(text);
+        } catch (parseError) {
+          console.error('Erro ao fazer parse do JSON:', parseError);
+          console.error('Resposta recebida:', text);
+          return {
+            error: 'Resposta inválida do servidor de autenticação',
+            details: 'A resposta não é um JSON válido',
+          };
+        }
+      } else {
+        // Se não for JSON, retorna o texto da resposta
+        return {
+          error: text || 'Erro ao fazer login',
+          details: `Resposta não é JSON. Status: ${response.status}`,
+        };
+      }
 
       if (!response.ok) {
         const errorData = data as BetterAuthErrorResponse;
@@ -145,6 +182,7 @@ export class AuthService {
         session: successData.session,
       };
     } catch (error) {
+      console.error('Erro ao fazer login:', error);
       return {
         error: 'Erro ao fazer login',
         details: error instanceof Error ? error.message : 'Erro desconhecido',
@@ -304,8 +342,54 @@ export class AuthService {
         };
       }
 
-      // Hash da nova senha
+      try {
+        // Tenta usar o endpoint interno do Better Auth para atualizar a senha
+        const response = await fetch(
+          `${process.env.BASE_URL || 'http://localhost:3000'}/api/auth/update-password`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              email: body.email,
+              newPassword: body.newPassword,
+            }),
+          },
+        );
+
+        if (response.ok) {
+          await this.db
+            .delete(schema.verifications)
+            .where(eq(schema.verifications.id, verification.id));
+
+          return {
+            success: true,
+            message: 'Senha redefinida com sucesso',
+          };
+        }
+      } catch {
+        // Se o endpoint não existir, continua com a atualização direta
+        console.error(
+          'Endpoint do Better Auth não disponível, usando atualização direta',
+        );
+      }
+
       const hashedPassword = await bcrypt.hash(body.newPassword, 10);
+
+      if (
+        !hashedPassword ||
+        hashedPassword.length !== 60 ||
+        !hashedPassword.startsWith('$2b$')
+      ) {
+        console.error('Hash inválido gerado:', {
+          length: hashedPassword?.length,
+          startsWith: hashedPassword?.substring(0, 4),
+        });
+        return {
+          error: 'Erro ao gerar hash da senha',
+        };
+      }
 
       // Atualiza a senha na tabela accounts
       await this.db
@@ -315,6 +399,18 @@ export class AuthService {
           updatedAt: new Date(),
         })
         .where(eq(schema.accounts.userId, user.id));
+
+      // Verifica se o hash foi salvo corretamente
+      const updatedAccount = await this.db.query.accounts.findFirst({
+        where: eq(schema.accounts.userId, user.id),
+      });
+
+      if (updatedAccount?.password !== hashedPassword) {
+        console.error('Hash não foi salvo corretamente!');
+        return {
+          error: 'Erro ao salvar hash da senha',
+        };
+      }
 
       // Remove o código de verificação usado
       await this.db
