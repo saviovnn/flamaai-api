@@ -22,8 +22,6 @@ interface WeatherResponseFuture {
     rain_sum: string;
     windspeed_10m_max: string;
     windgusts_10m_max: string;
-    soil_moisture_0_to_7cm_mean: string;
-    soil_temperature_0_to_7cm_mean: string;
     et0_fao_evapotranspiration: string;
     uv_index_max: string;
   };
@@ -37,8 +35,6 @@ interface WeatherResponseFuture {
     rain_sum: number[];
     windspeed_10m_max: number[];
     windgusts_10m_max: number[];
-    soil_moisture_0_to_7cm_mean: (number | null)[];
-    soil_temperature_0_to_7cm_mean: (number | null)[];
     et0_fao_evapotranspiration: number[];
     uv_index_max: number[];
   };
@@ -351,7 +347,7 @@ export class WeatherService {
     lat: number,
     lng: number,
   ): Promise<WeatherResponseFuture> {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&daily=temperature_2m_max,temperature_2m_min,temperature_2m_mean,relative_humidity_2m_mean,precipitation_sum,rain_sum,windspeed_10m_max,windgusts_10m_max,soil_moisture_0_to_7cm_mean,soil_temperature_0_to_7cm_mean,et0_fao_evapotranspiration,uv_index_max&forecast_days=7&timezone=America/Sao_Paulo`;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&daily=temperature_2m_max,temperature_2m_min,temperature_2m_mean,relative_humidity_2m_mean,precipitation_sum,rain_sum,windspeed_10m_max,windgusts_10m_max,et0_fao_evapotranspiration,uv_index_max&forecast_days=7&timezone=America/Sao_Paulo`;
     const response = await axios.get<WeatherResponseFuture>(url);
     return response.data;
   }
