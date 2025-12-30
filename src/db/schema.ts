@@ -10,6 +10,8 @@ import {
   index,
   integer,
   check,
+  jsonb,
+  unique,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
@@ -81,7 +83,7 @@ export const municipiosIbge = pgTable(
   'municipios_ibge',
   {
     gid: serial('gid').primaryKey().notNull(),
-    cdMun: varchar('cd_mun', { length: 7 }),
+    cdMun: varchar('cd_mun', { length: 7 }).notNull(),
     nmMun: varchar('nm_mun', { length: 100 }),
     cdRgi: varchar('cd_rgi', { length: 6 }),
     nmRgi: varchar('nm_rgi', { length: 100 }),
@@ -103,5 +105,79 @@ export const municipiosIbge = pgTable(
       'gist',
       table.geom.asc().nullsLast().op('gist_geometry_ops_2d'),
     ),
+    unique('municipios_ibge_cdmun_unique').on(table.cdMun),
   ],
 );
+
+export const biomasIbge = pgTable('biomas_ibge', {
+  gid: serial('gid').primaryKey().notNull(),
+  cdBioma: varchar('cd_bioma', { length: 2 }),
+  bioma: varchar('bioma', { length: 100 }),
+  geom: geometry('geom', { type: 'multipolygon', srid: 4674 }),
+});
+
+export const location = pgTable('location', {
+  id: text('id').primaryKey().notNull(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  biomaId: integer('bioma_id')
+    .notNull()
+    .references(() => biomasIbge.gid, { onDelete: 'cascade' }),
+  cdMun: varchar('cd_mun', { length: 7 })
+    .notNull()
+    .references(() => municipiosIbge.cdMun, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  lat: doublePrecision('lat').notNull(),
+  lng: doublePrecision('lng').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+export const fireRisk = pgTable('fire_risk', {
+  id: text('id').primaryKey().notNull(),
+  locationId: text('location_id')
+    .notNull()
+    .references(() => location.id, { onDelete: 'cascade' }),
+  weather_data_id: text('weather_data_id')
+    .notNull()
+    .references(() => weatherData.id, { onDelete: 'cascade' }),
+  week_start_date: timestamp('week_start_date').notNull(),
+  week_end_date: timestamp('week_end_date').notNull(),
+  dailyRisks: jsonb('daily_risks').notNull(),
+  weekly_risk_mean: doublePrecision('weekly_risk_mean').notNull(),
+  risk_level: varchar('risk_level', { length: 20 }).notNull(),
+  rag_explanation: text('rag_explanation').notNull(),
+  model_version: text('model_version').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+export const weatherData = pgTable('weather_data', {
+  id: text('id').primaryKey().notNull(),
+  locationId: text('location_id')
+    .notNull()
+    .references(() => location.id, { onDelete: 'cascade' }),
+  time: timestamp('time').notNull(),
+  temperature_2m_max: doublePrecision('temperature_2m_max').notNull(),
+  temperature_2m_min: doublePrecision('temperature_2m_min').notNull(),
+  temperature_2m_mean: doublePrecision('temperature_2m_mean').notNull(),
+  relative_humidity_2m_mean: doublePrecision(
+    'relative_humidity_2m_mean',
+  ).notNull(),
+  precipitation_sum: doublePrecision('precipitation_sum').notNull(),
+  rain_sum: doublePrecision('rain_sum'),
+  windspeed_10m_max: doublePrecision('windspeed_10m_max').notNull(),
+  windgusts_10m_max: doublePrecision('windgusts_10m_max').notNull(),
+  et0_fao_evapotranspiration: doublePrecision(
+    'et0_fao_evapotranspiration',
+  ).notNull(),
+  uv_index_max: doublePrecision('uv_index_max').notNull(),
+  pm10: doublePrecision('pm10').notNull(),
+  pm2_5: doublePrecision('pm2_5').notNull(),
+  carbon_monoxide: doublePrecision('carbon_monoxide').notNull(),
+  nitrogen_dioxide: doublePrecision('nitrogen_dioxide').notNull(),
+  sulphur_dioxide: doublePrecision('sulphur_dioxide').notNull(),
+  ozone: doublePrecision('ozone').notNull(),
+  aerosol_optical_depth: doublePrecision('aerosol_optical_depth').notNull(),
+  dust: doublePrecision('dust').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
