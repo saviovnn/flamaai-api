@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import { DatabaseModule } from './db/app.module';
 import { GeocodingModule } from './geocoding/geocoding.module';
+import { FireRiskModule } from './fire-risk/fire-risk.module';
 import { MapModule } from './map/map.module';
 import { WeatherModule } from './weather/weather.module';
 
@@ -19,6 +20,7 @@ import { WeatherModule } from './weather/weather.module';
     GeocodingModule,
     MapModule,
     WeatherModule,
+    FireRiskModule,
   ],
 })
 export class AppModule {}
