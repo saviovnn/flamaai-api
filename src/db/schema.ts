@@ -181,3 +181,14 @@ export const weatherData = pgTable('weather_data', {
   dust: doublePrecision('dust').notNull(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });
+
+export const fire_risk_weather_data = pgTable('fire_risk_weather_data', {
+  id: text('id').primaryKey().notNull(),
+  fireRiskId: text('fire_risk_id')
+    .notNull()
+    .references(() => fireRisk.id, { onDelete: 'cascade' }),
+  weatherDataId: text('weather_data_id')
+    .notNull()
+    .references(() => weatherData.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
