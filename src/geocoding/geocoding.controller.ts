@@ -1,13 +1,18 @@
 import { Controller, Post, Body } from '@nestjs/common';
 import { GeocodingService } from './geocoding.service';
-import { SearchDto } from './dto';
+import type { SearchDto } from './dto';
+import { searchSchema } from './dto';
+import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import type { GeocodingResult } from './geocoding.service';
 
 @Controller('api/geocoding')
 export class GeocodingController {
   constructor(private readonly geocodingService: GeocodingService) {}
 
   @Post('search')
-  async search(@Body() body: SearchDto) {
-    return await this.geocodingService.search(body.query);
+  async search(
+    @Body(new ZodValidationPipe(searchSchema)) body: SearchDto,
+  ): Promise<GeocodingResult> {
+    return await this.geocodingService.search(body.query, body.userId);
   }
 }

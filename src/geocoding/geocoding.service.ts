@@ -3,6 +3,7 @@ import axios from 'axios';
 import { DATABASE_CONNECTION } from '../db/app.module';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../db/schema';
+import { sql } from 'drizzle-orm';
 
 export interface GeocodingResult {
   cep: string | null;
@@ -11,7 +12,8 @@ export interface GeocodingResult {
   cidade: string;
   estado: string;
   ibge_id: string | null;
-  lat: number;
+  bioma_id: number | null;
+  lat: number | null;
   lng: number;
   endereco_completo: string;
   fonte_dados: string;
@@ -102,23 +104,116 @@ export class GeocodingService {
     private readonly db: NodePgDatabase<typeof schema>,
   ) {}
 
-  async search(query: string): Promise<GeocodingResult> {
+  async search(query: string, userId: string): Promise<GeocodingResult> {
     const cleanQuery = query.trim();
 
     // 1. É Coordenada? (Lat, Long)
     const coords = this.extractCoordinates(cleanQuery);
     if (coords) {
-      return this.handleReverseGeocoding(coords.lat, coords.lng);
+      const response = await this.handleReverseGeocoding(
+        coords.lat,
+        coords.lng,
+      );
+      if (response) {
+        const responseWithBiomaId = await this.addBiomaIdToResponse(response);
+        await this.saveGeocodingResult(responseWithBiomaId, userId);
+        return responseWithBiomaId;
+      } else {
+        throw new Error('Local não encontrado.');
+      }
     }
 
     // 2. É CEP? (8 dígitos)
     const cepMatch = cleanQuery.replace(/\D/g, '').match(/^(\d{8})$/);
     if (cepMatch) {
-      return this.handleCepFlow(cepMatch[0]);
+      const response = await this.handleCepFlow(cepMatch[0]);
+      if (response) {
+        const responseWithBiomaId = await this.addBiomaIdToResponse(response);
+        await this.saveGeocodingResult(responseWithBiomaId, userId);
+        return responseWithBiomaId;
+      } else {
+        throw new Error('Local não encontrado.');
+      }
     }
 
     // 3. É Busca Textual (Nome de rua, cidade, etc)
-    return this.handleTextSearch(cleanQuery);
+    const response = await this.handleTextSearch(cleanQuery);
+    if (response) {
+      const responseWithBiomaId = await this.addBiomaIdToResponse(response);
+      await this.saveGeocodingResult(responseWithBiomaId, userId);
+      return responseWithBiomaId;
+    } else {
+      throw new Error('Local não encontrado.');
+    }
+  }
+
+  private async addBiomaIdToResponse(
+    response: GeocodingResult,
+  ): Promise<GeocodingResult> {
+    const bioma = await this.db
+      .select({ gid: schema.biomasIbge.gid })
+      .from(schema.biomasIbge)
+      .where(
+        sql`ST_Intersects(
+            ${schema.biomasIbge.geom},
+            ST_Buffer(
+              ST_SetSRID(
+                ST_Point(${response.lng}, ${response.lat}),
+                4674
+              ),
+              0.00001
+            )
+        )`,
+      )
+      .limit(1);
+
+    const biomaId = bioma.length > 0 ? bioma[0].gid : null;
+    return {
+      ...response,
+      bioma_id: biomaId,
+    };
+  }
+
+  private async saveGeocodingResult(
+    result: GeocodingResult,
+    userId: string,
+  ): Promise<void> {
+    try {
+      // Validação: bioma_id e ibge_id são obrigatórios no schema
+      if (!result.bioma_id || !result.ibge_id) {
+        this.logger.warn(
+          `Não foi possível salvar localização: bioma_id=${result.bioma_id}, ibge_id=${result.ibge_id}`,
+        );
+        return;
+      }
+
+      // Validação: lat e lng devem ser válidos
+      if (result.lat === null || result.lng === null) {
+        this.logger.warn(
+          `Não foi possível salvar localização: coordenadas inválidas (lat=${result.lat}, lng=${result.lng})`,
+        );
+        return;
+      }
+
+      this.logger.log(`Salvando localização para usuário ${userId}`);
+      const cidade = this.getBestCityName({ city: result.cidade });
+      await this.db.insert(schema.location).values({
+        id: crypto.randomUUID(),
+        userId: userId,
+        biomaId: result.bioma_id,
+        cdMun: result.ibge_id,
+        name: cidade,
+        lat: result.lat,
+        lng: result.lng,
+      });
+
+      this.logger.log('Localização salva com sucesso');
+    } catch (error) {
+      this.logger.error(
+        `Erro ao salvar localização: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      // Não relança o erro para não quebrar o fluxo de busca
+    }
   }
 
   // FLUXO 1: CEP (BrasilAPI + Fallback Nominatim)
@@ -172,6 +267,7 @@ export class GeocodingService {
         cidade: data.city,
         estado: data.state,
         ibge_id: ibgeId,
+        bioma_id: null,
         lat: lat || 0,
         lng: lng || 0,
         endereco_completo: `${logradouro || 'Logradouro não informado'}, ${bairro || ''}, ${data.city} - ${data.state}`,
@@ -241,6 +337,7 @@ export class GeocodingService {
         cidade: cidade || 'Desconhecida',
         estado: ufSigla || 'UF',
         ibge_id: ibgeId,
+        bioma_id: null,
         lat,
         lng,
         endereco_completo: place.display_name,
@@ -281,6 +378,7 @@ export class GeocodingService {
         cidade,
         estado: ufSigla,
         ibge_id: ibgeId,
+        bioma_id: null,
         lat: Number(place.lat),
         lng: Number(place.lon),
         endereco_completo: place.display_name,
