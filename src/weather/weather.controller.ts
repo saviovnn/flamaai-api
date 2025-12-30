@@ -1,7 +1,7 @@
 import { Controller, Post, Body } from '@nestjs/common';
 import { WeatherService } from './weather.service';
-import { weatherSchema } from './dto';
-import type { WeatherDto } from './dto';
+import { weatherSchema, locationIdSchema } from './dto';
+import type { WeatherDto, LocationIdDto } from './dto';
 import type { WeatherResponseWithFuture } from './weather.service';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 
@@ -17,6 +17,16 @@ export class WeatherController {
       Number(body.lat),
       Number(body.lng),
       body.type,
+      body.location_id,
+    );
+  }
+
+  @Post('by-location-id')
+  async getWeatherByLocationId(
+    @Body(new ZodValidationPipe(locationIdSchema)) body: LocationIdDto,
+  ): Promise<WeatherResponseWithFuture> {
+    return await this.weatherService.getWeatherByLocationId(
+      String(body.location_id),
     );
   }
 }

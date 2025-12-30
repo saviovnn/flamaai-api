@@ -3,7 +3,8 @@ import { DATABASE_CONNECTION } from '../db/app.module';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../db/schema';
 import axios from 'axios';
-
+import { eq } from 'drizzle-orm';
+import type { location as Location } from '../db/schema';
 interface WeatherResponseFuture {
   latitude: number;
   longitude: number;
@@ -188,6 +189,7 @@ export class WeatherService {
     lat: number,
     lng: number,
     type: 'weather' | 'air' | 'all',
+    location_id: string,
   ): Promise<WeatherResponseWithFuture> {
     try {
       if (type === 'weather') {
@@ -224,6 +226,14 @@ export class WeatherService {
         const airFutureProcessed =
           this.processAirToDailyAverage<AirResponseFuture>(airFuture);
 
+        await this.saveWeatherData(
+          weatherFuture,
+          weatherPast,
+          airFutureProcessed,
+          airPastProcessed,
+          location_id,
+        );
+
         return {
           weatherFuture_7d: [weatherFuture],
           weatherPast_7d: [weatherPast],
@@ -236,6 +246,221 @@ export class WeatherService {
     } catch (error) {
       this.logger.error(error);
       throw new Error('Erro ao buscar dados meteorológicos');
+    }
+  }
+
+  async getWeatherByLocationId(
+    location_id: string,
+  ): Promise<WeatherResponseWithFuture> {
+    try {
+      const location = await this.db
+        .select()
+        .from(schema.location)
+        .where(eq(schema.location.id, location_id))
+        .limit(1);
+      if (!location) {
+        throw new Error('Localização não encontrada');
+      }
+      const weatherFuture = await this.getWeatherFuture(
+        Number(location[0].lat),
+        Number(location[0].lng),
+      );
+      const weatherPast = await this.getWeatherPast(
+        Number(location[0].lat),
+        Number(location[0].lng),
+      );
+      const airPast = await this.getAirPast(
+        Number(location[0].lat),
+        Number(location[0].lng),
+      );
+      const airFuture = await this.getAirFuture(
+        Number(location[0].lat),
+        Number(location[0].lng),
+      );
+
+      // Processar dados de qualidade do ar de horário para diário
+      const airPastProcessed =
+        this.processAirToDailyAverage<AirResponsePast>(airPast);
+      const airFutureProcessed =
+        this.processAirToDailyAverage<AirResponseFuture>(airFuture);
+
+      await this.saveWeatherData(
+        weatherFuture,
+        weatherPast,
+        airFutureProcessed,
+        airPastProcessed,
+        location_id,
+      );
+
+      return {
+        weatherFuture_7d: [weatherFuture],
+        weatherPast_7d: [weatherPast],
+        airFuture_7d: [airFutureProcessed],
+        airPast_7d: [airPastProcessed],
+      };
+    } catch (error) {
+      this.logger.error(error);
+      throw new Error('Erro ao buscar dados meteorológicos');
+    }
+  }
+
+  private async saveWeatherData(
+    weatherFuture: WeatherResponseFuture,
+    weatherPast: WeatherResponsePast,
+    airFuture: AirResponseFuture,
+    airPast: AirResponsePast,
+    location_id: string,
+  ): Promise<void> {
+    // Deletar dados existentes para esta localização para evitar duplicatas
+    await this.db
+      .delete(schema.weatherData)
+      .where(eq(schema.weatherData.location_id, location_id));
+
+    const futureWeatherData: Record<string, string | number | null>[] = [];
+    const pastWeatherData: Record<string, string | number | null>[] = [];
+
+    // Combinar dados futuros: clima + qualidade do ar por dia
+    for (let index = 0; index < weatherFuture.daily.time.length; index++) {
+      const dayData: Record<string, string | number | null> = {
+        time: weatherFuture.daily.time[index],
+        temperature_2m_max: weatherFuture.daily.temperature_2m_max[index],
+        temperature_2m_min: weatherFuture.daily.temperature_2m_min[index],
+        temperature_2m_mean: weatherFuture.daily.temperature_2m_mean[index],
+        relative_humidity_2m_mean:
+          weatherFuture.daily.relative_humidity_2m_mean[index],
+        precipitation_sum: weatherFuture.daily.precipitation_sum[index],
+        rain_sum: weatherFuture.daily.rain_sum[index],
+        windspeed_10m_max: weatherFuture.daily.windspeed_10m_max[index],
+        windgusts_10m_max: weatherFuture.daily.windgusts_10m_max[index],
+        et0_fao_evapotranspiration:
+          weatherFuture.daily.et0_fao_evapotranspiration[index],
+        uv_index_max: weatherFuture.daily.uv_index_max[index],
+      };
+
+      // Adicionar dados de qualidade do ar do mesmo dia (mesmo índice)
+      if (index < airFuture.daily.time.length) {
+        dayData.pm10 = airFuture.daily.pm10[index];
+        dayData.pm2_5 = airFuture.daily.pm2_5[index];
+        dayData.carbon_monoxide = airFuture.daily.carbon_monoxide[index];
+        dayData.nitrogen_dioxide = airFuture.daily.nitrogen_dioxide[index];
+        dayData.sulphur_dioxide = airFuture.daily.sulphur_dioxide[index];
+        dayData.ozone = airFuture.daily.ozone[index];
+        dayData.aerosol_optical_depth =
+          airFuture.daily.aerosol_optical_depth[index];
+        dayData.dust = airFuture.daily.dust[index];
+      }
+
+      futureWeatherData.push(dayData);
+    }
+
+    // Combinar dados passados: clima + qualidade do ar por dia
+    for (let index = 0; index < weatherPast.daily.time.length; index++) {
+      const dayData: Record<string, string | number | null> = {
+        time: weatherPast.daily.time[index],
+        temperature_2m_max: weatherPast.daily.temperature_2m_max[index],
+        temperature_2m_min: weatherPast.daily.temperature_2m_min[index],
+        temperature_2m_mean: weatherPast.daily.temperature_2m_mean[index],
+        relative_humidity_2m_mean:
+          weatherPast.daily.relative_humidity_2m_mean[index],
+        precipitation_sum: weatherPast.daily.precipitation_sum[index],
+        windspeed_10m_max: weatherPast.daily.windspeed_10m_max[index],
+        windgusts_10m_max: weatherPast.daily.windgusts_10m_max[index],
+        et0_fao_evapotranspiration:
+          weatherPast.daily.et0_fao_evapotranspiration[index],
+        uv_index_max: weatherPast.daily.uv_index_max[index],
+      };
+
+      // Adicionar dados de qualidade do ar do mesmo dia (mesmo índice)
+      if (index < airPast.daily.time.length) {
+        dayData.pm10 = airPast.daily.pm10[index];
+        dayData.pm2_5 = airPast.daily.pm2_5[index];
+        dayData.carbon_monoxide = airPast.daily.carbon_monoxide[index];
+        dayData.nitrogen_dioxide = airPast.daily.nitrogen_dioxide[index];
+        dayData.sulphur_dioxide = airPast.daily.sulphur_dioxide[index];
+        dayData.ozone = airPast.daily.ozone[index];
+        dayData.aerosol_optical_depth =
+          airPast.daily.aerosol_optical_depth[index];
+        dayData.dust = airPast.daily.dust[index];
+      }
+
+      pastWeatherData.push(dayData);
+    }
+
+    // Helper function para garantir que valores numéricos não sejam null/undefined
+    const ensureNumber = (
+      value: string | number | null | undefined,
+      defaultValue: number = 0,
+    ): number => {
+      if (value === null || value === undefined) return defaultValue;
+      return typeof value === 'number' ? value : Number(value) || defaultValue;
+    };
+
+    // Criar um Set com as datas do future para evitar duplicatas
+    const futureDates = new Set(
+      futureWeatherData.map((item) => item.time as string),
+    );
+
+    // Salvar dados futuros
+    for (const item of futureWeatherData) {
+      await this.db.insert(schema.weatherData).values({
+        id: crypto.randomUUID(),
+        location_id: location_id,
+        time: new Date(item.time as string),
+        temperature_2m_max: ensureNumber(item.temperature_2m_max),
+        temperature_2m_min: ensureNumber(item.temperature_2m_min),
+        temperature_2m_mean: ensureNumber(item.temperature_2m_mean),
+        relative_humidity_2m_mean: ensureNumber(item.relative_humidity_2m_mean),
+        precipitation_sum: ensureNumber(item.precipitation_sum),
+        rain_sum: ensureNumber(item.rain_sum),
+        windspeed_10m_max: ensureNumber(item.windspeed_10m_max),
+        windgusts_10m_max: ensureNumber(item.windgusts_10m_max),
+        et0_fao_evapotranspiration: ensureNumber(
+          item.et0_fao_evapotranspiration,
+        ),
+        uv_index_max: ensureNumber(item.uv_index_max),
+        pm10: ensureNumber(item.pm10),
+        pm2_5: ensureNumber(item.pm2_5),
+        carbon_monoxide: ensureNumber(item.carbon_monoxide),
+        nitrogen_dioxide: ensureNumber(item.nitrogen_dioxide),
+        sulphur_dioxide: ensureNumber(item.sulphur_dioxide),
+        ozone: ensureNumber(item.ozone),
+        aerosol_optical_depth: ensureNumber(item.aerosol_optical_depth),
+        dust: ensureNumber(item.dust),
+      });
+    }
+
+    // Salvar apenas dados passados que não estão no future (evitar duplicatas)
+    for (const item of pastWeatherData) {
+      // Pular se a data já existe no future
+      if (futureDates.has(item.time as string)) {
+        continue;
+      }
+
+      await this.db.insert(schema.weatherData).values({
+        id: crypto.randomUUID(),
+        location_id: location_id,
+        time: new Date(item.time as string),
+        temperature_2m_max: ensureNumber(item.temperature_2m_max),
+        temperature_2m_min: ensureNumber(item.temperature_2m_min),
+        temperature_2m_mean: ensureNumber(item.temperature_2m_mean),
+        relative_humidity_2m_mean: ensureNumber(item.relative_humidity_2m_mean),
+        precipitation_sum: ensureNumber(item.precipitation_sum),
+        rain_sum: ensureNumber(item.rain_sum),
+        windspeed_10m_max: ensureNumber(item.windspeed_10m_max),
+        windgusts_10m_max: ensureNumber(item.windgusts_10m_max),
+        et0_fao_evapotranspiration: ensureNumber(
+          item.et0_fao_evapotranspiration,
+        ),
+        uv_index_max: ensureNumber(item.uv_index_max),
+        pm10: ensureNumber(item.pm10),
+        pm2_5: ensureNumber(item.pm2_5),
+        carbon_monoxide: ensureNumber(item.carbon_monoxide),
+        nitrogen_dioxide: ensureNumber(item.nitrogen_dioxide),
+        sulphur_dioxide: ensureNumber(item.sulphur_dioxide),
+        ozone: ensureNumber(item.ozone),
+        aerosol_optical_depth: ensureNumber(item.aerosol_optical_depth),
+        dust: ensureNumber(item.dust),
+      });
     }
   }
 
@@ -356,7 +581,7 @@ export class WeatherService {
     lat: number,
     lng: number,
   ): Promise<WeatherResponsePast> {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&daily=temperature_2m_max,temperature_2m_min,temperature_2m_mean,relative_humidity_2m_mean,precipitation_sum,windspeed_10m_max,windgusts_10m_max,et0_fao_evapotranspiration,uv_index_max&start_date=${this.startDate}&end_date=${this.endDate}&timezone=America/Sao_Paulo`;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&daily=temperature_2m_max,temperature_2m_min,temperature_2m_mean,relative_humidity_2m_mean,precipitation_sum,rain_sum,windspeed_10m_max,windgusts_10m_max,et0_fao_evapotranspiration,uv_index_max&start_date=${this.startDate}&end_date=${this.endDate}&timezone=America/Sao_Paulo`;
     const response = await axios.get<WeatherResponsePast>(url);
     return response.data;
   }

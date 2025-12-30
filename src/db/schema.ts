@@ -153,7 +153,7 @@ export const fireRisk = pgTable('fire_risk', {
 
 export const weatherData = pgTable('weather_data', {
   id: text('id').primaryKey().notNull(),
-  locationId: text('location_id')
+  location_id: text('location_id')
     .notNull()
     .references(() => location.id, { onDelete: 'cascade' }),
   time: timestamp('time').notNull(),
