@@ -15,6 +15,13 @@
       "when": 1767053294786,
       "tag": "0001_gifted_marvex",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1767738831061,
+      "tag": "0002_adorable_violations",
+      "breakpoints": true
     }
   ]
 }

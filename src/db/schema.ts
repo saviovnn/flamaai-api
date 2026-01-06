@@ -138,9 +138,6 @@ export const fireRisk = pgTable('fire_risk', {
   locationId: text('location_id')
     .notNull()
     .references(() => location.id, { onDelete: 'cascade' }),
-  weather_data_id: text('weather_data_id')
-    .notNull()
-    .references(() => weatherData.id, { onDelete: 'cascade' }),
   week_start_date: timestamp('week_start_date').notNull(),
   week_end_date: timestamp('week_end_date').notNull(),
   dailyRisks: jsonb('daily_risks').notNull(),
