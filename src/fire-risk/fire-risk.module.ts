@@ -5,5 +5,6 @@ import { FireRiskService } from './fire-risk.service';
 @Module({
   controllers: [FireRiskController],
   providers: [FireRiskService],
+  exports: [FireRiskService],
 })
 export class FireRiskModule {}

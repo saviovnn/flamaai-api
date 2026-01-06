@@ -1,4 +1,12 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+  HttpException,
+  HttpStatus,
+  BadRequestException,
+} from '@nestjs/common';
 import axios from 'axios';
 import { DATABASE_CONNECTION } from '../db/app.module';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
@@ -6,6 +14,7 @@ import * as schema from '../db/schema';
 import { sql } from 'drizzle-orm';
 
 export interface GeocodingResult {
+  location_id: string | null;
   cep: string | null;
   logradouro: string | null;
   bairro: string | null;
@@ -13,6 +22,7 @@ export interface GeocodingResult {
   estado: string;
   ibge_id: string | null;
   bioma_id: number | null;
+  bioma: string | null;
   lat: number | null;
   lng: number;
   endereco_completo: string;
@@ -116,10 +126,22 @@ export class GeocodingService {
       );
       if (response) {
         const responseWithBiomaId = await this.addBiomaIdToResponse(response);
-        await this.saveGeocodingResult(responseWithBiomaId, userId);
-        return responseWithBiomaId;
+        this.validateBrazilLocation(responseWithBiomaId);
+        const locationId = await this.saveGeocodingResult(
+          responseWithBiomaId,
+          userId,
+        );
+        return {
+          ...responseWithBiomaId,
+          location_id: locationId,
+        };
       } else {
-        throw new Error('Local não encontrado.');
+        throw new NotFoundException({
+          statusCode: HttpStatus.NOT_FOUND,
+          message: 'Erro ao buscar local',
+          error:
+            'Não foi possível encontrar o local informado. Verifique se as coordenadas estão corretas.',
+        });
       }
     }
 
@@ -129,21 +151,68 @@ export class GeocodingService {
       const response = await this.handleCepFlow(cepMatch[0]);
       if (response) {
         const responseWithBiomaId = await this.addBiomaIdToResponse(response);
-        await this.saveGeocodingResult(responseWithBiomaId, userId);
-        return responseWithBiomaId;
+        this.validateBrazilLocation(responseWithBiomaId);
+        const locationId = await this.saveGeocodingResult(
+          responseWithBiomaId,
+          userId,
+        );
+        return {
+          ...responseWithBiomaId,
+          location_id: locationId,
+        };
       } else {
-        throw new Error('Local não encontrado.');
+        throw new NotFoundException({
+          statusCode: HttpStatus.NOT_FOUND,
+          message: 'Erro ao buscar local',
+          error: 'Não foi possível encontrar o local para o CEP informado.',
+        });
       }
     }
 
     // 3. É Busca Textual (Nome de rua, cidade, etc)
-    const response = await this.handleTextSearch(cleanQuery);
-    if (response) {
-      const responseWithBiomaId = await this.addBiomaIdToResponse(response);
-      await this.saveGeocodingResult(responseWithBiomaId, userId);
-      return responseWithBiomaId;
-    } else {
-      throw new Error('Local não encontrado.');
+    try {
+      const response = await this.handleTextSearch(cleanQuery);
+      if (response) {
+        const responseWithBiomaId = await this.addBiomaIdToResponse(response);
+        this.validateBrazilLocation(responseWithBiomaId);
+        const locationId = await this.saveGeocodingResult(
+          responseWithBiomaId,
+          userId,
+        );
+        return {
+          ...responseWithBiomaId,
+          location_id: locationId,
+        };
+      } else {
+        throw new NotFoundException({
+          statusCode: HttpStatus.NOT_FOUND,
+          message: 'Erro ao buscar local',
+          error: `Não foi possível encontrar o local para "${cleanQuery}". Verifique se o nome está correto.`,
+        });
+      }
+    } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof HttpException
+      ) {
+        throw error;
+      }
+      throw new NotFoundException({
+        statusCode: HttpStatus.NOT_FOUND,
+        message: 'Erro ao buscar local',
+        error: `Não foi possível encontrar o local para "${cleanQuery}". Verifique se o nome está correto.`,
+      });
+    }
+  }
+
+  private validateBrazilLocation(result: GeocodingResult): void {
+    if (!result.ibge_id) {
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: 'Erro ao buscar local',
+        error:
+          'O local informado não é do Brasil. Por favor, informe um local brasileiro.',
+      });
     }
   }
 
@@ -151,7 +220,10 @@ export class GeocodingService {
     response: GeocodingResult,
   ): Promise<GeocodingResult> {
     const bioma = await this.db
-      .select({ gid: schema.biomasIbge.gid })
+      .select({
+        gid: schema.biomasIbge.gid,
+        bioma: schema.biomasIbge.bioma,
+      })
       .from(schema.biomasIbge)
       .where(
         sql`ST_Intersects(
@@ -168,23 +240,25 @@ export class GeocodingService {
       .limit(1);
 
     const biomaId = bioma.length > 0 ? bioma[0].gid : null;
+    const biomaNome = bioma.length > 0 ? bioma[0].bioma : null;
     return {
       ...response,
       bioma_id: biomaId,
+      bioma: biomaNome,
     };
   }
 
   private async saveGeocodingResult(
     result: GeocodingResult,
     userId: string,
-  ): Promise<void> {
+  ): Promise<string | null> {
     try {
       // Validação: bioma_id e ibge_id são obrigatórios no schema
       if (!result.bioma_id || !result.ibge_id) {
         this.logger.warn(
           `Não foi possível salvar localização: bioma_id=${result.bioma_id}, ibge_id=${result.ibge_id}`,
         );
-        return;
+        return null;
       }
 
       // Validação: lat e lng devem ser válidos
@@ -192,13 +266,14 @@ export class GeocodingService {
         this.logger.warn(
           `Não foi possível salvar localização: coordenadas inválidas (lat=${result.lat}, lng=${result.lng})`,
         );
-        return;
+        return null;
       }
 
       this.logger.log(`Salvando localização para usuário ${userId}`);
       const cidade = this.getBestCityName({ city: result.cidade });
+      const locationId = crypto.randomUUID();
       await this.db.insert(schema.location).values({
-        id: crypto.randomUUID(),
+        id: locationId,
         userId: userId,
         biomaId: result.bioma_id,
         cdMun: result.ibge_id,
@@ -208,11 +283,13 @@ export class GeocodingService {
       });
 
       this.logger.log('Localização salva com sucesso');
+      return locationId;
     } catch (error) {
       this.logger.error(
         `Erro ao salvar localização: ${error instanceof Error ? error.message : String(error)}`,
       );
       // Não relança o erro para não quebrar o fluxo de busca
+      return null;
     }
   }
 
@@ -261,6 +338,7 @@ export class GeocodingService {
       const ibgeId = await this.fetchIbgeId(data.city, data.state);
 
       return {
+        location_id: null,
         cep: data.cep,
         logradouro,
         bairro,
@@ -268,6 +346,7 @@ export class GeocodingService {
         estado: data.state,
         ibge_id: ibgeId,
         bioma_id: null,
+        bioma: null,
         lat: lat || 0,
         lng: lng || 0,
         endereco_completo: `${logradouro || 'Logradouro não informado'}, ${bairro || ''}, ${data.city} - ${data.state}`,
@@ -330,6 +409,7 @@ export class GeocodingService {
       }
 
       return {
+        location_id: null,
         cep,
         logradouro:
           place.address?.road || (place.class === 'highway' ? query : null),
@@ -338,6 +418,7 @@ export class GeocodingService {
         estado: ufSigla || 'UF',
         ibge_id: ibgeId,
         bioma_id: null,
+        bioma: null,
         lat,
         lng,
         endereco_completo: place.display_name,
@@ -345,7 +426,14 @@ export class GeocodingService {
       };
     } catch (error) {
       this.logger.error(`Erro na busca textual: ${error}`);
-      throw new Error('Local não encontrado.');
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new NotFoundException({
+        statusCode: HttpStatus.NOT_FOUND,
+        message: 'Erro ao buscar local',
+        error: `Não foi possível encontrar o local para "${query}". Verifique se o nome está correto.`,
+      });
     }
   }
 
@@ -372,6 +460,7 @@ export class GeocodingService {
       const ibgeId = await this.fetchIbgeId(cidade, ufSigla);
 
       return {
+        location_id: null,
         cep: place.address?.postcode || null,
         logradouro: place.address?.road || null,
         bairro: place.address?.suburb || null,
@@ -379,13 +468,22 @@ export class GeocodingService {
         estado: ufSigla,
         ibge_id: ibgeId,
         bioma_id: null,
+        bioma: null,
         lat: Number(place.lat),
         lng: Number(place.lon),
         endereco_completo: place.display_name,
         fonte_dados: 'nominatim_reverse',
       };
-    } catch {
-      throw new Error('Erro ao processar coordenadas.');
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new NotFoundException({
+        statusCode: HttpStatus.NOT_FOUND,
+        message: 'Erro ao buscar local',
+        error:
+          'Não foi possível processar as coordenadas informadas. Verifique se estão corretas.',
+      });
     }
   }
 
@@ -486,15 +584,32 @@ export class GeocodingService {
   }
 
   private async callNominatimRaw(query: string): Promise<NominatimPlace> {
-    const { data } = await axios.get<NominatimPlace[]>(
-      'https://nominatim.openstreetmap.org/search',
-      {
-        params: { q: query, format: 'json', limit: 1, addressdetails: 1 },
-        headers: { 'User-Agent': this.USER_AGENT },
-      },
-    );
-    if (!data[0]) throw new Error('Local não encontrado');
-    return data[0];
+    try {
+      const { data } = await axios.get<NominatimPlace[]>(
+        'https://nominatim.openstreetmap.org/search',
+        {
+          params: { q: query, format: 'json', limit: 1, addressdetails: 1 },
+          headers: { 'User-Agent': this.USER_AGENT },
+        },
+      );
+      if (!data[0]) {
+        throw new NotFoundException({
+          statusCode: HttpStatus.NOT_FOUND,
+          message: 'Erro ao buscar local',
+          error: `Não foi possível encontrar o local para "${query}". Verifique se o nome está correto.`,
+        });
+      }
+      return data[0];
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new NotFoundException({
+        statusCode: HttpStatus.NOT_FOUND,
+        message: 'Erro ao buscar local',
+        error: `Não foi possível encontrar o local para "${query}". Verifique se o nome está correto.`,
+      });
+    }
   }
 
   private extractCoordinates(

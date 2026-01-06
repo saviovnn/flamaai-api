@@ -14,8 +14,7 @@ export class FireRiskController {
     @Body(new ZodValidationPipe(fireRiskSchema)) body: FireRiskDto,
   ): Promise<FireRiskResponse> {
     return await this.fireRiskService.getFireRisk(
-      Number(body.lat),
-      Number(body.lng),
+      String(body.locationId),
       new Date(body.startDate),
       new Date(body.endDate),
       body.weatherDataIds,

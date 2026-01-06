@@ -171,6 +171,7 @@ interface AirResponsePast {
   };
 }
 export interface WeatherResponseWithFuture {
+  weather_data_ids: string[];
   weatherFuture_7d?: WeatherResponseFuture[];
   weatherPast_7d?: WeatherResponsePast[];
   airFuture_7d?: AirResponseFuture[];
@@ -197,6 +198,7 @@ export class WeatherService {
         const weatherPast = await this.getWeatherPast(lat, lng);
 
         return {
+          weather_data_ids: [],
           weatherFuture_7d: [weatherFuture],
           weatherPast_7d: [weatherPast],
         };
@@ -211,6 +213,7 @@ export class WeatherService {
           this.processAirToDailyAverage<AirResponseFuture>(airFuture);
 
         return {
+          weather_data_ids: [],
           airFuture_7d: [airFutureProcessed],
           airPast_7d: [airPastProcessed],
         };
@@ -226,7 +229,7 @@ export class WeatherService {
         const airFutureProcessed =
           this.processAirToDailyAverage<AirResponseFuture>(airFuture);
 
-        await this.saveWeatherData(
+        const weatherDataIds = await this.saveWeatherData(
           weatherFuture,
           weatherPast,
           airFutureProcessed,
@@ -235,6 +238,7 @@ export class WeatherService {
         );
 
         return {
+          weather_data_ids: weatherDataIds,
           weatherFuture_7d: [weatherFuture],
           weatherPast_7d: [weatherPast],
           airFuture_7d: [airFutureProcessed],
@@ -284,7 +288,7 @@ export class WeatherService {
       const airFutureProcessed =
         this.processAirToDailyAverage<AirResponseFuture>(airFuture);
 
-      await this.saveWeatherData(
+      const weatherDataIds = await this.saveWeatherData(
         weatherFuture,
         weatherPast,
         airFutureProcessed,
@@ -293,6 +297,7 @@ export class WeatherService {
       );
 
       return {
+        weather_data_ids: weatherDataIds,
         weatherFuture_7d: [weatherFuture],
         weatherPast_7d: [weatherPast],
         airFuture_7d: [airFutureProcessed],
@@ -310,12 +315,13 @@ export class WeatherService {
     airFuture: AirResponseFuture,
     airPast: AirResponsePast,
     location_id: string,
-  ): Promise<void> {
+  ): Promise<string[]> {
     // Deletar dados existentes para esta localização para evitar duplicatas
     await this.db
       .delete(schema.weatherData)
       .where(eq(schema.weatherData.location_id, location_id));
 
+    const weatherDataIds: string[] = [];
     const futureWeatherData: Record<string, string | number | null>[] = [];
     const pastWeatherData: Record<string, string | number | null>[] = [];
 
@@ -402,8 +408,10 @@ export class WeatherService {
 
     // Salvar dados futuros
     for (const item of futureWeatherData) {
+      const weatherDataId = crypto.randomUUID();
+      weatherDataIds.push(weatherDataId);
       await this.db.insert(schema.weatherData).values({
-        id: crypto.randomUUID(),
+        id: weatherDataId,
         location_id: location_id,
         time: new Date(item.time as string),
         temperature_2m_max: ensureNumber(item.temperature_2m_max),
@@ -436,8 +444,10 @@ export class WeatherService {
         continue;
       }
 
+      const weatherDataId = crypto.randomUUID();
+      weatherDataIds.push(weatherDataId);
       await this.db.insert(schema.weatherData).values({
-        id: crypto.randomUUID(),
+        id: weatherDataId,
         location_id: location_id,
         time: new Date(item.time as string),
         temperature_2m_max: ensureNumber(item.temperature_2m_max),
@@ -462,6 +472,8 @@ export class WeatherService {
         dust: ensureNumber(item.dust),
       });
     }
+
+    return weatherDataIds;
   }
 
   private processAirToDailyAverage<

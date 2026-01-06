@@ -10,9 +10,9 @@ export class OrchestratorController {
   constructor(private readonly orchestratorService: OrchestratorService) {}
 
   @Post('search')
-  search(
+  async search(
     @Body(new ZodValidationPipe(orchestratorSchema)) body: OrchestratorDto,
-  ): OrchestratorResult {
-    return this.orchestratorService.search(body.query, body.userId);
+  ): Promise<OrchestratorResult> {
+    return await this.orchestratorService.search(body.query, body.userId);
   }
 }
