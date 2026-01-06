@@ -6,6 +6,7 @@ import { GeocodingModule } from './geocoding/geocoding.module';
 import { FireRiskModule } from './fire-risk/fire-risk.module';
 import { MapModule } from './map/map.module';
 import { WeatherModule } from './weather/weather.module';
+import { OrchestratorModule } from './orchestrator/orchestrator.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { WeatherModule } from './weather/weather.module';
     MapModule,
     WeatherModule,
     FireRiskModule,
+    OrchestratorModule,
   ],
 })
 export class AppModule {}
