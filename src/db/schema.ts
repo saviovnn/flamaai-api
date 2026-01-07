@@ -130,6 +130,7 @@ export const location = pgTable('location', {
   name: text('name').notNull(),
   lat: doublePrecision('lat').notNull(),
   lng: doublePrecision('lng').notNull(),
+  preference: varchar('preference', { length: 10 }).notNull(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 

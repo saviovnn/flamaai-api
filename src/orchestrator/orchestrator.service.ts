@@ -28,9 +28,17 @@ export class OrchestratorService {
     private readonly mapService: MapService,
   ) {}
 
-  async search(query: string, userId: string): Promise<OrchestratorResult> {
+  async search(
+    query: string,
+    userId: string,
+    preference: 'weather' | 'air',
+  ): Promise<OrchestratorResult> {
     try {
-      const geocodingResult = await this.geocodingService.search(query, userId);
+      const geocodingResult = await this.geocodingService.search(
+        query,
+        userId,
+        preference,
+      );
 
       const mapResult = await this.mapService.getMapByIbgeId(
         geocodingResult.ibge_id as string,

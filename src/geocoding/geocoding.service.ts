@@ -15,6 +15,7 @@ import { sql } from 'drizzle-orm';
 
 export interface GeocodingResult {
   location_id: string | null;
+  preference?: 'weather' | 'air';
   cep: string | null;
   logradouro: string | null;
   bairro: string | null;
@@ -114,7 +115,11 @@ export class GeocodingService {
     private readonly db: NodePgDatabase<typeof schema>,
   ) {}
 
-  async search(query: string, userId: string): Promise<GeocodingResult> {
+  async search(
+    query: string,
+    userId: string,
+    preference: 'weather' | 'air',
+  ): Promise<GeocodingResult> {
     const cleanQuery = query.trim();
 
     // 1. É Coordenada? (Lat, Long)
@@ -130,10 +135,12 @@ export class GeocodingService {
         const locationId = await this.saveGeocodingResult(
           responseWithBiomaId,
           userId,
+          preference,
         );
         return {
           ...responseWithBiomaId,
           location_id: locationId,
+          preference: preference,
         };
       } else {
         throw new NotFoundException({
@@ -155,10 +162,12 @@ export class GeocodingService {
         const locationId = await this.saveGeocodingResult(
           responseWithBiomaId,
           userId,
+          preference,
         );
         return {
           ...responseWithBiomaId,
           location_id: locationId,
+          preference: preference,
         };
       } else {
         throw new NotFoundException({
@@ -178,10 +187,12 @@ export class GeocodingService {
         const locationId = await this.saveGeocodingResult(
           responseWithBiomaId,
           userId,
+          preference,
         );
         return {
           ...responseWithBiomaId,
           location_id: locationId,
+          preference: preference,
         };
       } else {
         throw new NotFoundException({
@@ -251,6 +262,7 @@ export class GeocodingService {
   private async saveGeocodingResult(
     result: GeocodingResult,
     userId: string,
+    preference: 'weather' | 'air',
   ): Promise<string | null> {
     try {
       // Validação: bioma_id e ibge_id são obrigatórios no schema
@@ -280,6 +292,7 @@ export class GeocodingService {
         name: cidade,
         lat: result.lat,
         lng: result.lng,
+        preference: preference,
       });
 
       this.logger.log('Localização salva com sucesso');
@@ -351,6 +364,7 @@ export class GeocodingService {
         lng: lng || 0,
         endereco_completo: `${logradouro || 'Logradouro não informado'}, ${bairro || ''}, ${data.city} - ${data.state}`,
         fonte_dados: fonteGeo,
+        preference: undefined,
       };
     } catch {
       this.logger.warn(
@@ -423,6 +437,7 @@ export class GeocodingService {
         lng,
         endereco_completo: place.display_name,
         fonte_dados: 'nominatim_search',
+        preference: undefined,
       };
     } catch (error) {
       this.logger.error(`Erro na busca textual: ${error}`);
@@ -473,6 +488,7 @@ export class GeocodingService {
         lng: Number(place.lon),
         endereco_completo: place.display_name,
         fonte_dados: 'nominatim_reverse',
+        preference: undefined,
       };
     } catch (error) {
       if (error instanceof HttpException) {

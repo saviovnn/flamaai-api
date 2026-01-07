@@ -13,6 +13,10 @@ export class GeocodingController {
   async search(
     @Body(new ZodValidationPipe(searchSchema)) body: SearchDto,
   ): Promise<GeocodingResult> {
-    return await this.geocodingService.search(body.query, body.userId);
+    return await this.geocodingService.search(
+      body.query,
+      body.userId,
+      body.preference,
+    );
   }
 }

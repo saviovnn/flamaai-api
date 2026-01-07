@@ -13,6 +13,10 @@ export class OrchestratorController {
   async search(
     @Body(new ZodValidationPipe(orchestratorSchema)) body: OrchestratorDto,
   ): Promise<OrchestratorResult> {
-    return await this.orchestratorService.search(body.query, body.userId);
+    return await this.orchestratorService.search(
+      body.query,
+      body.userId,
+      body.preference,
+    );
   }
 }
