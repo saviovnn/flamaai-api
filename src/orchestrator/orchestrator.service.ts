@@ -1,4 +1,5 @@
 import {
+  Inject,
   Injectable,
   HttpException,
   HttpStatus,
@@ -12,6 +13,11 @@ import type { GeocodingResult } from '../geocoding/geocoding.service';
 import type { MapResponse } from '../map/map.service';
 import type { WeatherResponseWithFuture } from '../weather/weather.service';
 import type { FireRiskResponse } from '../fire-risk/fire-risk.service';
+import { eq, desc } from 'drizzle-orm';
+import * as schema from '../db/schema';
+import { DATABASE_CONNECTION } from '../db/app.module';
+import { NodePgDatabase } from 'drizzle-orm/node-postgres';
+
 export interface OrchestratorResult {
   success: boolean;
   geocodingResult: GeocodingResult;
@@ -19,9 +25,21 @@ export interface OrchestratorResult {
   weatherResult: WeatherResponseWithFuture;
   fireRiskResult: FireRiskResponse;
 }
+
+export interface OrchestratorAllResult {
+  success: boolean;
+  data: {
+    id: string;
+    name: string;
+    risk_level: string;
+    createdAt: Date;
+  }[];
+}
 @Injectable()
 export class OrchestratorService {
   constructor(
+    @Inject(DATABASE_CONNECTION)
+    private readonly db: NodePgDatabase<typeof schema>,
     private readonly geocodingService: GeocodingService,
     private readonly weatherService: WeatherService,
     private readonly fireRiskService: FireRiskService,
@@ -78,5 +96,39 @@ export class OrchestratorService {
             : 'Erro desconhecido ao processar a busca',
       });
     }
+  }
+
+  async getAll(userId: string): Promise<OrchestratorAllResult> {
+    const data = await this.db
+      .select({
+        id: schema.location.id,
+        name: schema.location.name,
+        createdAt: schema.location.createdAt,
+        riskLevel: schema.fireRisk.risk_level,
+      })
+      .from(schema.location)
+      .leftJoin(
+        schema.fireRisk,
+        eq(schema.location.id, schema.fireRisk.locationId),
+      )
+      .where(eq(schema.location.userId, userId))
+      .orderBy(desc(schema.fireRisk.createdAt));
+
+    const locationMap = new Map();
+    data.forEach((item) => {
+      if (!locationMap.has(item.id)) {
+        locationMap.set(item.id, {
+          id: item.id,
+          name: item.name,
+          risk_level: item.riskLevel || 'N/A',
+          createdAt: item.createdAt,
+        });
+      }
+    });
+
+    return {
+      success: true,
+      data: Array.from(locationMap.values()),
+    };
   }
 }
