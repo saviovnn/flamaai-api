@@ -1,9 +1,16 @@
 import { Controller, Post, Body } from '@nestjs/common';
 import { GeocodingService } from './geocoding.service';
 import type { SearchDto } from './dto';
-import { searchSchema } from './dto';
+import {
+  searchMunicipiosSchema,
+  searchSchema,
+  type SearchMunicipiosDto,
+} from './dto';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
-import type { GeocodingResult } from './geocoding.service';
+import type {
+  GeocodingResult,
+  SearchMunicipiosResult,
+} from './geocoding.service';
 
 @Controller('api/geocoding')
 export class GeocodingController {
@@ -18,5 +25,13 @@ export class GeocodingController {
       body.userId,
       body.preference,
     );
+  }
+
+  @Post('search-municipios')
+  async searchMunicipios(
+    @Body(new ZodValidationPipe(searchMunicipiosSchema))
+    body: SearchMunicipiosDto,
+  ): Promise<SearchMunicipiosResult[]> {
+    return await this.geocodingService.searchMunicipios(body.query);
   }
 }

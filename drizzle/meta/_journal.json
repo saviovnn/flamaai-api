@@ -29,6 +29,13 @@
       "when": 1767743067933,
       "tag": "0003_curious_saracen",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1736723400000,
+      "tag": "0004_enable_unaccent",
+      "breakpoints": true
     }
   ]
 }

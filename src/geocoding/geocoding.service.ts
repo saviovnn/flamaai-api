@@ -69,6 +69,12 @@ interface BrasilApiV2Response {
   };
 }
 
+export interface SearchMunicipiosResult {
+  cdMun: string;
+  name: string;
+  siglaUf: string;
+}
+
 interface IbgeMunicipio {
   id: number;
   nome: string;
@@ -214,6 +220,33 @@ export class GeocodingService {
         error: `Não foi possível encontrar o local para "${cleanQuery}". Verifique se o nome está correto.`,
       });
     }
+  }
+
+  async searchMunicipios(query: string): Promise<SearchMunicipiosResult[]> {
+    // Busca com normalização de acentos e ordenação por relevância
+    const response = await this.db
+      .select({
+        cdMun: schema.municipiosIbge.cdMun,
+        name: schema.municipiosIbge.nmMun,
+        siglaUf: schema.municipiosIbge.siglaUf,
+      })
+      .from(schema.municipiosIbge)
+      .where(sql`unaccent(nm_mun) ILIKE unaccent(${'%' + query + '%'})`)
+      .orderBy(
+        sql`
+          CASE
+            WHEN unaccent(nm_mun) ILIKE unaccent(${query}) THEN 1
+            WHEN unaccent(nm_mun) ILIKE unaccent(${query + '%'}) THEN 2
+            ELSE 3
+          END
+        `,
+      )
+      .limit(10);
+    return response.map((municipio) => ({
+      cdMun: municipio.cdMun,
+      name: municipio.name || '',
+      siglaUf: municipio.siglaUf || '',
+    }));
   }
 
   private validateBrazilLocation(result: GeocodingResult): void {
