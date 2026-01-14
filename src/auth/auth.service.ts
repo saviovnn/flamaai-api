@@ -353,7 +353,7 @@ export class AuthService {
             },
             body: JSON.stringify({
               email: body.email,
-              newPassword: body.newPassword,
+              newPassword: body.new_password,
             }),
           },
         );
@@ -375,7 +375,7 @@ export class AuthService {
         );
       }
 
-      const hashedPassword = await bcrypt.hash(body.newPassword, 10);
+      const hashedPassword = await bcrypt.hash(body.new_password, 10);
 
       if (
         !hashedPassword ||
@@ -431,7 +431,7 @@ export class AuthService {
   }
 
   async findAll() {
-    return await this.db.query.users.findMany({
+    const users = await this.db.query.users.findMany({
       columns: {
         id: true,
         name: true,
@@ -442,5 +442,16 @@ export class AuthService {
         updatedAt: true,
       },
     });
+
+    // Converte para snake_case
+    return users.map((user) => ({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      email_verified: user.emailVerified,
+      image: user.image,
+      created_at: user.createdAt,
+      updated_at: user.updatedAt,
+    }));
   }
 }

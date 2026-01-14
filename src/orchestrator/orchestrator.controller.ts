@@ -26,7 +26,7 @@ export class OrchestratorController {
   ): Promise<OrchestratorSearchResponse> {
     return await this.orchestratorService.search(
       body.query,
-      body.userId,
+      body.user_id,
       body.preference,
     );
   }
@@ -36,9 +36,9 @@ export class OrchestratorController {
     @Body(new ZodValidationPipe(orchestratorAllSchema))
     body: OrchestratorAllDto,
   ): Promise<
-    { id: string; name: string; risk_level: string; createdAt: Date }[]
+    { id: string; name: string; risk_level: string; created_at: Date }[]
   > {
-    return await this.orchestratorService.getAll(body.userId);
+    return await this.orchestratorService.getAll(body.user_id);
   }
 
   @Post('single')
@@ -46,6 +46,6 @@ export class OrchestratorController {
     @Body(new ZodValidationPipe(orchestratorSingleSchema))
     body: OrchestratorSingleDto,
   ): Promise<OrchestratorSingleResponse> {
-    return await this.orchestratorService.getSingle(String(body.locationId));
+    return await this.orchestratorService.getSingle(String(body.location_id));
   }
 }

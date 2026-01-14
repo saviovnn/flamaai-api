@@ -25,7 +25,7 @@ export class GeocodingController {
   ): Promise<GeocodingResult> {
     return await this.geocodingService.search(
       body.query,
-      body.userId,
+      body.user_id,
       body.preference,
     );
   }

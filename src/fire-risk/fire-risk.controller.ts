@@ -15,11 +15,11 @@ export class FireRiskController {
     @Body(new ZodValidationPipe(fireRiskSchema)) body: FireRiskDto,
   ): Promise<FireRiskResponse> {
     return await this.fireRiskService.getFireRisk(
-      String(body.locationId),
-      new Date(body.startDate),
-      new Date(body.endDate),
-      body.weatherDataIds,
-      String(body.modelVersion),
+      String(body.location_id),
+      new Date(body.start_date),
+      new Date(body.end_date),
+      body.weather_data_ids,
+      String(body.model_version),
     );
   }
 
@@ -28,7 +28,7 @@ export class FireRiskController {
     @Body(new ZodValidationPipe(weatherDataIdsSchema)) body: WeatherDataIdsDto,
   ): Promise<(typeof schema.fireRisk.$inferSelect)[]> {
     return await this.fireRiskService.getFireRiskByWeatherDataIds(
-      body.weatherDataIds,
+      body.weather_data_ids,
     );
   }
 }

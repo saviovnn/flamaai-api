@@ -70,9 +70,9 @@ interface BrasilApiV2Response {
 }
 
 export interface SearchMunicipiosResult {
-  cdMun: string;
+  ibge_id: string;
   name: string;
-  siglaUf: string;
+  sigla_uf: string;
 }
 
 interface IbgeMunicipio {
@@ -82,14 +82,15 @@ interface IbgeMunicipio {
 
 export interface LocationResponse {
   id: string;
-  userId: string;
-  biomaId: number;
-  cdMun: string;
+  user_id: string;
+  bioma_id: number;
+  bioma: string;
+  ibge_id: string;
   name: string;
   lat: number;
   lng: number;
   preference: 'weather' | 'air';
-  createdAt: Date;
+  created_at: Date;
 }
 
 const ESTADOS_MAP: Record<string, string> = {
@@ -135,7 +136,7 @@ export class GeocodingService {
 
   async search(
     query: string,
-    userId: string,
+    user_id: string,
     preference: 'weather' | 'air',
   ): Promise<GeocodingResult> {
     const cleanQuery = query.trim();
@@ -152,7 +153,7 @@ export class GeocodingService {
         this.validateBrazilLocation(responseWithBiomaId);
         const locationId = await this.saveGeocodingResult(
           responseWithBiomaId,
-          userId,
+          user_id,
           preference,
         );
         return {
@@ -179,7 +180,7 @@ export class GeocodingService {
         this.validateBrazilLocation(responseWithBiomaId);
         const locationId = await this.saveGeocodingResult(
           responseWithBiomaId,
-          userId,
+          user_id,
           preference,
         );
         return {
@@ -204,7 +205,7 @@ export class GeocodingService {
         this.validateBrazilLocation(responseWithBiomaId);
         const locationId = await this.saveGeocodingResult(
           responseWithBiomaId,
-          userId,
+          user_id,
           preference,
         );
         return {
@@ -255,9 +256,9 @@ export class GeocodingService {
       )
       .limit(10);
     return response.map((municipio) => ({
-      cdMun: municipio.cdMun,
+      ibge_id: municipio.cdMun,
       name: municipio.name || '',
-      siglaUf: municipio.siglaUf || '',
+      sigla_uf: municipio.siglaUf || '',
     }));
   }
 
@@ -267,7 +268,38 @@ export class GeocodingService {
       .from(schema.location)
       .where(sql`id = ${locationId}`)
       .limit(1);
-    return location[0] as LocationResponse;
+
+    if (!location || location.length === 0) {
+      throw new NotFoundException({
+        statusCode: HttpStatus.NOT_FOUND,
+        message: 'Localização não encontrada',
+        error: `Não foi possível encontrar a localização com o ID informado.`,
+      });
+    }
+
+    const locationData = location[0];
+
+    // Busca o nome do bioma
+    const bioma = await this.db
+      .select({
+        bioma: schema.biomasIbge.bioma,
+      })
+      .from(schema.biomasIbge)
+      .where(sql`gid = ${locationData.biomaId}`)
+      .limit(1);
+
+    return {
+      id: locationData.id,
+      user_id: locationData.userId,
+      bioma_id: locationData.biomaId,
+      bioma: bioma[0]?.bioma || 'Desconhecido',
+      ibge_id: locationData.cdMun,
+      name: locationData.name,
+      lat: locationData.lat,
+      lng: locationData.lng,
+      preference: locationData.preference as 'weather' | 'air',
+      created_at: locationData.createdAt,
+    };
   }
 
   private validateBrazilLocation(result: GeocodingResult): void {
@@ -315,7 +347,7 @@ export class GeocodingService {
 
   private async saveGeocodingResult(
     result: GeocodingResult,
-    userId: string,
+    user_id: string,
     preference: 'weather' | 'air',
   ): Promise<string | null> {
     try {
@@ -335,12 +367,12 @@ export class GeocodingService {
         return null;
       }
 
-      this.logger.log(`Salvando localização para usuário ${userId}`);
+      this.logger.log(`Salvando localização para usuário ${user_id}`);
       const cidade = this.getBestCityName({ city: result.cidade });
       const locationId = crypto.randomUUID();
       await this.db.insert(schema.location).values({
         id: locationId,
-        userId: userId,
+        userId: user_id,
         biomaId: result.bioma_id,
         cdMun: result.ibge_id,
         name: cidade,

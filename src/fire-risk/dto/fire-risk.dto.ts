@@ -9,17 +9,17 @@ const weatherDataIdsErrorMessage =
   'O campo "weather_data_ids" deve ser um array de strings';
 
 export const fireRiskSchema = z.object({
-  locationId: z.string({ message: locationIdErrorMessage }),
-  startDate: z.coerce.date({ message: startDateErrorMessage }),
-  endDate: z.coerce.date({ message: endDateErrorMessage }),
-  weatherDataIds: z.array(z.string({ message: weatherDataIdsErrorMessage })),
-  modelVersion: z.string({ message: modelVersionErrorMessage }),
+  location_id: z.string({ message: locationIdErrorMessage }),
+  start_date: z.coerce.date({ message: startDateErrorMessage }),
+  end_date: z.coerce.date({ message: endDateErrorMessage }),
+  weather_data_ids: z.array(z.string({ message: weatherDataIdsErrorMessage })),
+  model_version: z.string({ message: modelVersionErrorMessage }),
 });
 
 export type FireRiskDto = z.infer<typeof fireRiskSchema>;
 
 export const weatherDataIdsSchema = z.object({
-  weatherDataIds: z.array(z.string({ message: weatherDataIdsErrorMessage })),
+  weather_data_ids: z.array(z.string({ message: weatherDataIdsErrorMessage })),
 });
 
 export type WeatherDataIdsDto = z.infer<typeof weatherDataIdsSchema>;

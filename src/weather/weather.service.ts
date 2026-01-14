@@ -172,10 +172,10 @@ interface AirResponsePast {
 }
 export interface WeatherResponse {
   weather_data_ids: string[];
-  weatherFuture_7d?: WeatherResponseFuture[];
-  weatherPast_7d?: WeatherResponsePast[];
-  airFuture_7d?: AirResponseFuture[];
-  airPast_7d?: AirResponsePast[];
+  weather_future_7d?: WeatherResponseFuture[];
+  weather_past_7d?: WeatherResponsePast[];
+  air_future_7d?: AirResponseFuture[];
+  air_past_7d?: AirResponsePast[];
 }
 @Injectable()
 export class WeatherService {
@@ -199,8 +199,8 @@ export class WeatherService {
 
         return {
           weather_data_ids: [],
-          weatherFuture_7d: [weatherFuture],
-          weatherPast_7d: [weatherPast],
+          weather_future_7d: [weatherFuture],
+          weather_past_7d: [weatherPast],
         };
       } else if (type === 'air') {
         const airPast = await this.getAirPast(lat, lng);
@@ -214,8 +214,8 @@ export class WeatherService {
 
         return {
           weather_data_ids: [],
-          airFuture_7d: [airFutureProcessed],
-          airPast_7d: [airPastProcessed],
+          air_future_7d: [airFutureProcessed],
+          air_past_7d: [airPastProcessed],
         };
       } else if (type === 'all') {
         const weatherFuture = await this.getWeatherFuture(lat, lng);
@@ -239,10 +239,10 @@ export class WeatherService {
 
         return {
           weather_data_ids: weatherDataIds,
-          weatherFuture_7d: [weatherFuture],
-          weatherPast_7d: [weatherPast],
-          airFuture_7d: [airFutureProcessed],
-          airPast_7d: [airPastProcessed],
+          weather_future_7d: [weatherFuture],
+          weather_past_7d: [weatherPast],
+          air_future_7d: [airFutureProcessed],
+          air_past_7d: [airPastProcessed],
         };
       } else {
         throw new Error('Tipo de dados inválido');
@@ -296,10 +296,10 @@ export class WeatherService {
 
       return {
         weather_data_ids: weatherDataIds,
-        weatherFuture_7d: [weatherFuture],
-        weatherPast_7d: [weatherPast],
-        airFuture_7d: [airFutureProcessed],
-        airPast_7d: [airPastProcessed],
+        weather_future_7d: [weatherFuture],
+        weather_past_7d: [weatherPast],
+        air_future_7d: [airFutureProcessed],
+        air_past_7d: [airPastProcessed],
       };
     } catch (error) {
       this.logger.error(error);
@@ -488,10 +488,10 @@ export class WeatherService {
 
       return {
         weather_data_ids: weatherData.map((d) => d.id),
-        weatherFuture_7d: [weatherFuture],
-        weatherPast_7d: [weatherPast],
-        airFuture_7d: [airFuture],
-        airPast_7d: [airPast],
+        weather_future_7d: [weatherFuture],
+        weather_past_7d: [weatherPast],
+        air_future_7d: [airFuture],
+        air_past_7d: [airPast],
       };
     } catch (error) {
       this.logger.error(error);

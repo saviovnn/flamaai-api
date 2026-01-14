@@ -4,21 +4,21 @@ export interface BetterAuthUser {
   id: string;
   email: string;
   name: string;
-  emailVerified: boolean;
+  email_verified: boolean;
   image?: string | null;
-  createdAt: Date;
-  updatedAt: Date;
+  created_at: Date;
+  updated_at: Date;
 }
 
 export interface BetterAuthSession {
   id: string;
   token: string;
-  expiresAt: Date;
-  userId: string;
-  ipAddress?: string;
-  userAgent?: string;
-  createdAt?: Date;
-  updatedAt?: Date;
+  expires_at: Date;
+  user_id: string;
+  ip_address?: string;
+  user_agent?: string;
+  created_at?: Date;
+  updated_at?: Date;
 }
 
 export interface BetterAuthResponse {

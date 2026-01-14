@@ -22,17 +22,17 @@ import { DATABASE_CONNECTION } from '../db/app.module';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 
 export interface OrchestratorSearchResponse {
-  geocodingResult: GeocodingResult;
-  mapResult: MapResponse;
-  weatherResult: WeatherResponse;
-  fireRiskResult: FireRiskResponse;
+  geocoding_result: GeocodingResult;
+  map_result: MapResponse;
+  weather_result: WeatherResponse;
+  fire_risk_result: FireRiskResponse;
 }
 
 export interface OrchestratorSingleResponse {
-  geocodingResult: LocationResponse;
-  mapResult: MapResponse;
-  weatherResult: WeatherResponse;
-  fireRiskResult: FireRiskResponse | null;
+  geocoding_result: LocationResponse;
+  map_result: MapResponse;
+  weather_result: WeatherResponse;
+  fire_risk_result: FireRiskResponse | null;
 }
 @Injectable()
 export class OrchestratorService {
@@ -47,13 +47,13 @@ export class OrchestratorService {
 
   async search(
     query: string,
-    userId: string,
+    user_id: string,
     preference: 'weather' | 'air',
   ): Promise<OrchestratorSearchResponse> {
     try {
       const geocoding = await this.geocodingService.search(
         query,
-        userId,
+        user_id,
         preference,
       );
 
@@ -77,10 +77,10 @@ export class OrchestratorService {
       );
 
       return {
-        geocodingResult: geocoding,
-        mapResult: map,
-        weatherResult: weather,
-        fireRiskResult: fireRisk,
+        geocoding_result: geocoding,
+        map_result: map,
+        weather_result: weather,
+        fire_risk_result: fireRisk,
       };
     } catch (error) {
       if (error instanceof HttpException) {
@@ -98,9 +98,9 @@ export class OrchestratorService {
   }
 
   async getAll(
-    userId: string,
+    user_id: string,
   ): Promise<
-    { id: string; name: string; risk_level: string; createdAt: Date }[]
+    { id: string; name: string; risk_level: string; created_at: Date }[]
   > {
     const data = await this.db
       .select({
@@ -114,12 +114,12 @@ export class OrchestratorService {
         schema.fireRisk,
         eq(schema.location.id, schema.fireRisk.locationId),
       )
-      .where(eq(schema.location.userId, userId))
+      .where(eq(schema.location.userId, user_id))
       .orderBy(desc(schema.fireRisk.createdAt));
 
     const locationMap = new Map<
       string,
-      { id: string; name: string; risk_level: string; createdAt: Date }
+      { id: string; name: string; risk_level: string; created_at: Date }
     >();
     data.forEach((item) => {
       if (!locationMap.has(item.id)) {
@@ -127,7 +127,7 @@ export class OrchestratorService {
           id: item.id,
           name: item.name,
           risk_level: item.riskLevel || 'N/A',
-          createdAt: item.createdAt,
+          created_at: item.createdAt,
         });
       }
     });
@@ -135,15 +135,15 @@ export class OrchestratorService {
     return Array.from(locationMap.values());
   }
 
-  async getSingle(locationId: string): Promise<OrchestratorSingleResponse> {
+  async getSingle(location_id: string): Promise<OrchestratorSingleResponse> {
     try {
       const geocoding =
-        await this.geocodingService.getDataByLocationId(locationId);
+        await this.geocodingService.getDataByLocationId(location_id);
 
-      const map = await this.mapService.getMapByIbgeId(geocoding.cdMun);
+      const map = await this.mapService.getMapByIbgeId(geocoding.ibge_id);
 
       const weather =
-        await this.weatherService.getDataWeatherByLocationId(locationId);
+        await this.weatherService.getDataWeatherByLocationId(location_id);
 
       // Busca os fire risks e pega apenas o mais recente
       const fireRiskArray =
@@ -155,21 +155,21 @@ export class OrchestratorService {
       const fireRisk: FireRiskResponse | null =
         fireRiskArray && fireRiskArray.length > 0
           ? {
-              dailyRisks: fireRiskArray[0].dailyRisks as {
+              daily_risks: fireRiskArray[0].dailyRisks as {
                 day: string;
                 risk: number;
               }[],
-              weeklyRiskMean: fireRiskArray[0].weekly_risk_mean,
-              riskLevel: fireRiskArray[0].risk_level,
-              ragExplanation: fireRiskArray[0].rag_explanation,
+              weekly_risk_mean: fireRiskArray[0].weekly_risk_mean,
+              risk_level: fireRiskArray[0].risk_level,
+              rag_explanation: fireRiskArray[0].rag_explanation,
             }
           : null;
 
       return {
-        geocodingResult: geocoding,
-        mapResult: map,
-        weatherResult: weather,
-        fireRiskResult: fireRisk,
+        geocoding_result: geocoding,
+        map_result: map,
+        weather_result: weather,
+        fire_risk_result: fireRisk,
       };
     } catch (error) {
       throw new InternalServerErrorException({
