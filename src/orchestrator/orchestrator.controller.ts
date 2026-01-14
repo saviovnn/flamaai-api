@@ -1,12 +1,20 @@
 import { Controller, Post, Body } from '@nestjs/common';
-import { OrchestratorService } from './orchestrator.service';
-import type { OrchestratorDto, OrchestratorAllDto } from './dto';
-import { orchestratorSchema, orchestratorAllSchema } from './dto';
-import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
-import type {
-  OrchestratorAllResult,
-  OrchestratorResult,
+import {
+  OrchestratorService,
+  type OrchestratorSearchResponse,
+  type OrchestratorSingleResponse,
 } from './orchestrator.service';
+import type {
+  OrchestratorDto,
+  OrchestratorAllDto,
+  OrchestratorSingleDto,
+} from './dto';
+import {
+  orchestratorSchema,
+  orchestratorAllSchema,
+  orchestratorSingleSchema,
+} from './dto';
+import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 
 @Controller('api/orchestrator')
 export class OrchestratorController {
@@ -15,7 +23,7 @@ export class OrchestratorController {
   @Post('search')
   async search(
     @Body(new ZodValidationPipe(orchestratorSchema)) body: OrchestratorDto,
-  ): Promise<OrchestratorResult> {
+  ): Promise<OrchestratorSearchResponse> {
     return await this.orchestratorService.search(
       body.query,
       body.userId,
@@ -27,7 +35,17 @@ export class OrchestratorController {
   async getAll(
     @Body(new ZodValidationPipe(orchestratorAllSchema))
     body: OrchestratorAllDto,
-  ): Promise<OrchestratorAllResult> {
+  ): Promise<
+    { id: string; name: string; risk_level: string; createdAt: Date }[]
+  > {
     return await this.orchestratorService.getAll(body.userId);
+  }
+
+  @Post('single')
+  async getSingle(
+    @Body(new ZodValidationPipe(orchestratorSingleSchema))
+    body: OrchestratorSingleDto,
+  ): Promise<OrchestratorSingleResponse> {
+    return await this.orchestratorService.getSingle(String(body.locationId));
   }
 }

@@ -1,9 +1,10 @@
 import { Controller, Post, Body } from '@nestjs/common';
 import { FireRiskService } from './fire-risk.service';
-import { fireRiskSchema } from './dto';
-import type { FireRiskDto } from './dto';
+import { fireRiskSchema, weatherDataIdsSchema } from './dto';
+import type { FireRiskDto, WeatherDataIdsDto } from './dto';
 import type { FireRiskResponse } from './fire-risk.service';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import * as schema from '../db/schema';
 
 @Controller('api/fire-risk')
 export class FireRiskController {
@@ -19,6 +20,15 @@ export class FireRiskController {
       new Date(body.endDate),
       body.weatherDataIds,
       String(body.modelVersion),
+    );
+  }
+
+  @Post('get-fire-risk-by-weather-data-ids')
+  async getFireRiskByWeatherDataIds(
+    @Body(new ZodValidationPipe(weatherDataIdsSchema)) body: WeatherDataIdsDto,
+  ): Promise<(typeof schema.fireRisk.$inferSelect)[]> {
+    return await this.fireRiskService.getFireRiskByWeatherDataIds(
+      body.weatherDataIds,
     );
   }
 }

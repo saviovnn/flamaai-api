@@ -10,5 +10,10 @@ export const searchMunicipiosSchema = z.object({
   query: z.string().min(1),
 });
 
+export const LocationIdSchema = z.object({
+  location_id: z.string().min(1),
+});
+
 export type SearchDto = z.infer<typeof searchSchema>;
 export type SearchMunicipiosDto = z.infer<typeof searchMunicipiosSchema>;
+export type LocationIdDto = z.infer<typeof LocationIdSchema>;

@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { DATABASE_CONNECTION } from '../db/app.module';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import * as schema from '../db/schema';
 
 export interface FireRiskResponse {
@@ -126,6 +126,40 @@ export class FireRiskService {
       this.logger.error(error);
       throw new Error('Erro ao buscar dados de risco de incêndio');
     }
+  }
+
+  async getFireRiskByWeatherDataIds(
+    weatherDataIds: string[],
+  ): Promise<(typeof schema.fireRisk.$inferSelect)[]> {
+    if (weatherDataIds.length === 0) {
+      return [];
+    }
+
+    // Buscar todos os registros de fireRiskWeatherData para os weatherDataIds fornecidos
+    const fireRiskWeatherData: (typeof schema.fireRiskWeatherData.$inferSelect)[] =
+      await this.db
+        .select()
+        .from(schema.fireRiskWeatherData)
+        .where(
+          inArray(schema.fireRiskWeatherData.weatherDataId, weatherDataIds),
+        );
+
+    if (fireRiskWeatherData.length === 0) {
+      return [];
+    }
+
+    // Extrair fireRiskIds únicos
+    const fireRiskIds = [
+      ...new Set(fireRiskWeatherData.map((item) => item.fireRiskId)),
+    ];
+
+    // Buscar todos os fireRisks correspondentes
+    const fireRisks: (typeof schema.fireRisk.$inferSelect)[] = await this.db
+      .select()
+      .from(schema.fireRisk)
+      .where(inArray(schema.fireRisk.id, fireRiskIds));
+
+    return fireRisks;
   }
 
   async saveFireRisk(fireRisk: FireRisk): Promise<FireRisk> {

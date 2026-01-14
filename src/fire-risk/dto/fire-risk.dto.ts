@@ -17,3 +17,9 @@ export const fireRiskSchema = z.object({
 });
 
 export type FireRiskDto = z.infer<typeof fireRiskSchema>;
+
+export const weatherDataIdsSchema = z.object({
+  weatherDataIds: z.array(z.string({ message: weatherDataIdsErrorMessage })),
+});
+
+export type WeatherDataIdsDto = z.infer<typeof weatherDataIdsSchema>;

@@ -80,6 +80,18 @@ interface IbgeMunicipio {
   nome: string;
 }
 
+export interface LocationResponse {
+  id: string;
+  userId: string;
+  biomaId: number;
+  cdMun: string;
+  name: string;
+  lat: number;
+  lng: number;
+  preference: 'weather' | 'air';
+  createdAt: Date;
+}
+
 const ESTADOS_MAP: Record<string, string> = {
   Acre: 'AC',
   Alagoas: 'AL',
@@ -247,6 +259,15 @@ export class GeocodingService {
       name: municipio.name || '',
       siglaUf: municipio.siglaUf || '',
     }));
+  }
+
+  async getDataByLocationId(locationId: string): Promise<LocationResponse> {
+    const location = await this.db
+      .select()
+      .from(schema.location)
+      .where(sql`id = ${locationId}`)
+      .limit(1);
+    return location[0] as LocationResponse;
   }
 
   private validateBrazilLocation(result: GeocodingResult): void {

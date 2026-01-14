@@ -170,7 +170,7 @@ interface AirResponsePast {
     dust: (number | null)[];
   };
 }
-export interface WeatherResponseWithFuture {
+export interface WeatherResponse {
   weather_data_ids: string[];
   weatherFuture_7d?: WeatherResponseFuture[];
   weatherPast_7d?: WeatherResponsePast[];
@@ -191,7 +191,7 @@ export class WeatherService {
     lng: number,
     type: 'weather' | 'air' | 'all',
     location_id: string,
-  ): Promise<WeatherResponseWithFuture> {
+  ): Promise<WeatherResponse> {
     try {
       if (type === 'weather') {
         const weatherFuture = await this.getWeatherFuture(lat, lng);
@@ -253,9 +253,7 @@ export class WeatherService {
     }
   }
 
-  async getWeatherByLocationId(
-    location_id: string,
-  ): Promise<WeatherResponseWithFuture> {
+  async getWeatherByLocationId(location_id: string): Promise<WeatherResponse> {
     try {
       const location = await this.db
         .select()
@@ -302,6 +300,198 @@ export class WeatherService {
         weatherPast_7d: [weatherPast],
         airFuture_7d: [airFutureProcessed],
         airPast_7d: [airPastProcessed],
+      };
+    } catch (error) {
+      this.logger.error(error);
+      throw new Error('Erro ao buscar dados meteorológicos');
+    }
+  }
+
+  async getDataWeatherByLocationId(
+    location_id: string,
+  ): Promise<WeatherResponse> {
+    try {
+      // Buscar localização para obter coordenadas
+      const location = await this.db
+        .select()
+        .from(schema.location)
+        .where(eq(schema.location.id, location_id))
+        .limit(1);
+
+      if (!location || location.length === 0) {
+        throw new Error('Localização não encontrada');
+      }
+
+      // Buscar dados meteorológicos do banco
+      const weatherData = await this.db
+        .select()
+        .from(schema.weatherData)
+        .where(eq(schema.weatherData.location_id, location_id));
+
+      if (!weatherData || weatherData.length === 0) {
+        throw new Error('Dados meteorológicos não encontrados');
+      }
+
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+
+      // Separar dados em passado e futuro
+      const pastData = weatherData.filter((data) => data.time < now);
+      const futureData = weatherData.filter((data) => data.time >= now);
+
+      // Converter dados do banco para o formato de resposta
+      const weatherPast: WeatherResponsePast = {
+        latitude: Number(location[0].lat),
+        longitude: Number(location[0].lng),
+        generationtime_ms: 0,
+        utc_offset_seconds: 0,
+        timezone: 'America/Sao_Paulo',
+        timezone_abbreviation: 'BRT',
+        elevation: 0,
+        daily_units: {
+          time: 'iso8601',
+          temperature_2m_max: '°C',
+          temperature_2m_min: '°C',
+          temperature_2m_mean: '°C',
+          relative_humidity_2m_mean: '%',
+          precipitation_sum: 'mm',
+          windspeed_10m_max: 'km/h',
+          windgusts_10m_max: 'km/h',
+          et0_fao_evapotranspiration: 'mm',
+          uv_index_max: '',
+        },
+        daily: {
+          time: pastData.map((d) => d.time.toISOString().split('T')[0]),
+          temperature_2m_max: pastData.map((d) => d.temperature_2m_max),
+          temperature_2m_min: pastData.map((d) => d.temperature_2m_min),
+          temperature_2m_mean: pastData.map((d) => d.temperature_2m_mean),
+          relative_humidity_2m_mean: pastData.map(
+            (d) => d.relative_humidity_2m_mean,
+          ),
+          precipitation_sum: pastData.map((d) => d.precipitation_sum),
+          windspeed_10m_max: pastData.map((d) => d.windspeed_10m_max),
+          windgusts_10m_max: pastData.map((d) => d.windgusts_10m_max),
+          et0_fao_evapotranspiration: pastData.map(
+            (d) => d.et0_fao_evapotranspiration,
+          ),
+          uv_index_max: pastData.map((d) => d.uv_index_max ?? null),
+        },
+      };
+
+      const weatherFuture: WeatherResponseFuture = {
+        latitude: Number(location[0].lat),
+        longitude: Number(location[0].lng),
+        generationtime_ms: 0,
+        utc_offset_seconds: 0,
+        timezone: 'America/Sao_Paulo',
+        timezone_abbreviation: 'BRT',
+        elevation: 0,
+        daily_units: {
+          time: 'iso8601',
+          temperature_2m_max: '°C',
+          temperature_2m_min: '°C',
+          temperature_2m_mean: '°C',
+          relative_humidity_2m_mean: '%',
+          precipitation_sum: 'mm',
+          rain_sum: 'mm',
+          windspeed_10m_max: 'km/h',
+          windgusts_10m_max: 'km/h',
+          et0_fao_evapotranspiration: 'mm',
+          uv_index_max: '',
+        },
+        daily: {
+          time: futureData.map((d) => d.time.toISOString().split('T')[0]),
+          temperature_2m_max: futureData.map((d) => d.temperature_2m_max),
+          temperature_2m_min: futureData.map((d) => d.temperature_2m_min),
+          temperature_2m_mean: futureData.map((d) => d.temperature_2m_mean),
+          relative_humidity_2m_mean: futureData.map(
+            (d) => d.relative_humidity_2m_mean,
+          ),
+          precipitation_sum: futureData.map((d) => d.precipitation_sum),
+          rain_sum: futureData.map((d) => d.rain_sum ?? 0),
+          windspeed_10m_max: futureData.map((d) => d.windspeed_10m_max),
+          windgusts_10m_max: futureData.map((d) => d.windgusts_10m_max),
+          et0_fao_evapotranspiration: futureData.map(
+            (d) => d.et0_fao_evapotranspiration,
+          ),
+          uv_index_max: futureData.map((d) => d.uv_index_max),
+        },
+      };
+
+      const airPast: AirResponsePast = {
+        latitude: Number(location[0].lat),
+        longitude: Number(location[0].lng),
+        generationtime_ms: 0,
+        utc_offset_seconds: 0,
+        timezone: 'America/Sao_Paulo',
+        timezone_abbreviation: 'BRT',
+        elevation: 0,
+        daily_units: {
+          time: 'iso8601',
+          pm10: 'μg/m³',
+          pm2_5: 'μg/m³',
+          carbon_monoxide: 'μg/m³',
+          nitrogen_dioxide: 'μg/m³',
+          sulphur_dioxide: 'μg/m³',
+          ozone: 'μg/m³',
+          aerosol_optical_depth: '',
+          dust: 'μg/m³',
+        },
+        daily: {
+          time: pastData.map((d) => d.time.toISOString().split('T')[0]),
+          pm10: pastData.map((d) => d.pm10 ?? null),
+          pm2_5: pastData.map((d) => d.pm2_5 ?? null),
+          carbon_monoxide: pastData.map((d) => d.carbon_monoxide ?? null),
+          nitrogen_dioxide: pastData.map((d) => d.nitrogen_dioxide ?? null),
+          sulphur_dioxide: pastData.map((d) => d.sulphur_dioxide ?? null),
+          ozone: pastData.map((d) => d.ozone ?? null),
+          aerosol_optical_depth: pastData.map(
+            (d) => d.aerosol_optical_depth ?? null,
+          ),
+          dust: pastData.map((d) => d.dust ?? null),
+        },
+      };
+
+      const airFuture: AirResponseFuture = {
+        latitude: Number(location[0].lat),
+        longitude: Number(location[0].lng),
+        generationtime_ms: 0,
+        utc_offset_seconds: 0,
+        timezone: 'America/Sao_Paulo',
+        timezone_abbreviation: 'BRT',
+        elevation: 0,
+        daily_units: {
+          time: 'iso8601',
+          pm10: 'μg/m³',
+          pm2_5: 'μg/m³',
+          carbon_monoxide: 'μg/m³',
+          nitrogen_dioxide: 'μg/m³',
+          sulphur_dioxide: 'μg/m³',
+          ozone: 'μg/m³',
+          aerosol_optical_depth: '',
+          dust: 'μg/m³',
+        },
+        daily: {
+          time: futureData.map((d) => d.time.toISOString().split('T')[0]),
+          pm10: futureData.map((d) => d.pm10 ?? null),
+          pm2_5: futureData.map((d) => d.pm2_5 ?? null),
+          carbon_monoxide: futureData.map((d) => d.carbon_monoxide ?? null),
+          nitrogen_dioxide: futureData.map((d) => d.nitrogen_dioxide ?? null),
+          sulphur_dioxide: futureData.map((d) => d.sulphur_dioxide ?? null),
+          ozone: futureData.map((d) => d.ozone ?? null),
+          aerosol_optical_depth: futureData.map(
+            (d) => d.aerosol_optical_depth ?? null,
+          ),
+          dust: futureData.map((d) => d.dust ?? null),
+        },
+      };
+
+      return {
+        weather_data_ids: weatherData.map((d) => d.id),
+        weatherFuture_7d: [weatherFuture],
+        weatherPast_7d: [weatherPast],
+        airFuture_7d: [airFuture],
+        airPast_7d: [airPast],
       };
     } catch (error) {
       this.logger.error(error);

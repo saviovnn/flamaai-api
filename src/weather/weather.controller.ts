@@ -2,7 +2,7 @@ import { Controller, Post, Body } from '@nestjs/common';
 import { WeatherService } from './weather.service';
 import { weatherSchema, locationIdSchema } from './dto';
 import type { WeatherDto, LocationIdDto } from './dto';
-import type { WeatherResponseWithFuture } from './weather.service';
+import type { WeatherResponse } from './weather.service';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 
 @Controller('api/weather')
@@ -12,7 +12,7 @@ export class WeatherController {
   @Post('by-coordinates')
   async getWeatherByCoordinates(
     @Body(new ZodValidationPipe(weatherSchema)) body: WeatherDto,
-  ): Promise<WeatherResponseWithFuture> {
+  ): Promise<WeatherResponse> {
     return await this.weatherService.getWeatherByCoordinates(
       Number(body.lat),
       Number(body.lng),
@@ -24,8 +24,17 @@ export class WeatherController {
   @Post('by-location-id')
   async getWeatherByLocationId(
     @Body(new ZodValidationPipe(locationIdSchema)) body: LocationIdDto,
-  ): Promise<WeatherResponseWithFuture> {
+  ): Promise<WeatherResponse> {
     return await this.weatherService.getWeatherByLocationId(
+      String(body.location_id),
+    );
+  }
+
+  @Post('data-by-location-id')
+  async getDataWeatherByLocationId(
+    @Body(new ZodValidationPipe(locationIdSchema)) body: LocationIdDto,
+  ): Promise<WeatherResponse> {
+    return await this.weatherService.getDataWeatherByLocationId(
       String(body.location_id),
     );
   }

@@ -9,31 +9,30 @@ import { GeocodingService } from '../geocoding/geocoding.service';
 import { WeatherService } from '../weather/weather.service';
 import { FireRiskService } from '../fire-risk/fire-risk.service';
 import { MapService } from '../map/map.service';
-import type { GeocodingResult } from '../geocoding/geocoding.service';
+import type {
+  GeocodingResult,
+  LocationResponse,
+} from '../geocoding/geocoding.service';
 import type { MapResponse } from '../map/map.service';
-import type { WeatherResponseWithFuture } from '../weather/weather.service';
+import type { WeatherResponse } from '../weather/weather.service';
 import type { FireRiskResponse } from '../fire-risk/fire-risk.service';
 import { eq, desc } from 'drizzle-orm';
 import * as schema from '../db/schema';
 import { DATABASE_CONNECTION } from '../db/app.module';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 
-export interface OrchestratorResult {
-  success: boolean;
+export interface OrchestratorSearchResponse {
   geocodingResult: GeocodingResult;
   mapResult: MapResponse;
-  weatherResult: WeatherResponseWithFuture;
+  weatherResult: WeatherResponse;
   fireRiskResult: FireRiskResponse;
 }
 
-export interface OrchestratorAllResult {
-  success: boolean;
-  data: {
-    id: string;
-    name: string;
-    risk_level: string;
-    createdAt: Date;
-  }[];
+export interface OrchestratorSingleResponse {
+  geocodingResult: LocationResponse;
+  mapResult: MapResponse;
+  weatherResult: WeatherResponse;
+  fireRiskResult: FireRiskResponse | null;
 }
 @Injectable()
 export class OrchestratorService {
@@ -50,38 +49,38 @@ export class OrchestratorService {
     query: string,
     userId: string,
     preference: 'weather' | 'air',
-  ): Promise<OrchestratorResult> {
+  ): Promise<OrchestratorSearchResponse> {
     try {
-      const geocodingResult = await this.geocodingService.search(
+      const geocoding = await this.geocodingService.search(
         query,
         userId,
         preference,
       );
 
-      const mapResult = await this.mapService.getMapByIbgeId(
-        geocodingResult.ibge_id as string,
+      const map = await this.mapService.getMapByIbgeId(
+        geocoding.ibge_id as string,
       );
 
-      const weatherResult = await this.weatherService.getWeatherByLocationId(
-        geocodingResult.location_id as string,
+      const weather = await this.weatherService.getWeatherByLocationId(
+        geocoding.location_id as string,
       );
 
-      const fireRiskResult = await this.fireRiskService.getFireRisk(
-        geocodingResult.location_id as string,
+      const fireRisk = await this.fireRiskService.getFireRisk(
+        geocoding.location_id as string,
         new Date(),
         (() => {
           const today = new Date();
           return new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
         })(),
-        weatherResult.weather_data_ids,
+        weather.weather_data_ids,
         '1.0.0',
       );
+
       return {
-        success: true,
-        geocodingResult: geocodingResult,
-        mapResult: mapResult,
-        weatherResult: weatherResult,
-        fireRiskResult: fireRiskResult,
+        geocodingResult: geocoding,
+        mapResult: map,
+        weatherResult: weather,
+        fireRiskResult: fireRisk,
       };
     } catch (error) {
       if (error instanceof HttpException) {
@@ -98,7 +97,11 @@ export class OrchestratorService {
     }
   }
 
-  async getAll(userId: string): Promise<OrchestratorAllResult> {
+  async getAll(
+    userId: string,
+  ): Promise<
+    { id: string; name: string; risk_level: string; createdAt: Date }[]
+  > {
     const data = await this.db
       .select({
         id: schema.location.id,
@@ -114,7 +117,10 @@ export class OrchestratorService {
       .where(eq(schema.location.userId, userId))
       .orderBy(desc(schema.fireRisk.createdAt));
 
-    const locationMap = new Map();
+    const locationMap = new Map<
+      string,
+      { id: string; name: string; risk_level: string; createdAt: Date }
+    >();
     data.forEach((item) => {
       if (!locationMap.has(item.id)) {
         locationMap.set(item.id, {
@@ -126,9 +132,54 @@ export class OrchestratorService {
       }
     });
 
-    return {
-      success: true,
-      data: Array.from(locationMap.values()),
-    };
+    return Array.from(locationMap.values());
+  }
+
+  async getSingle(locationId: string): Promise<OrchestratorSingleResponse> {
+    try {
+      const geocoding =
+        await this.geocodingService.getDataByLocationId(locationId);
+
+      const map = await this.mapService.getMapByIbgeId(geocoding.cdMun);
+
+      const weather =
+        await this.weatherService.getDataWeatherByLocationId(locationId);
+
+      // Busca os fire risks e pega apenas o mais recente
+      const fireRiskArray =
+        await this.fireRiskService.getFireRiskByWeatherDataIds(
+          weather.weather_data_ids,
+        );
+
+      // Pega o primeiro (mais recente) fire risk, ou null se não houver
+      const fireRisk: FireRiskResponse | null =
+        fireRiskArray && fireRiskArray.length > 0
+          ? {
+              dailyRisks: fireRiskArray[0].dailyRisks as {
+                day: string;
+                risk: number;
+              }[],
+              weeklyRiskMean: fireRiskArray[0].weekly_risk_mean,
+              riskLevel: fireRiskArray[0].risk_level,
+              ragExplanation: fireRiskArray[0].rag_explanation,
+            }
+          : null;
+
+      return {
+        geocodingResult: geocoding,
+        mapResult: map,
+        weatherResult: weather,
+        fireRiskResult: fireRisk,
+      };
+    } catch (error) {
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Erro ao processar busca',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Erro desconhecido ao processar a busca',
+      });
+    }
   }
 }

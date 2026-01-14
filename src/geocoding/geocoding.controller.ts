@@ -5,11 +5,14 @@ import {
   searchMunicipiosSchema,
   searchSchema,
   type SearchMunicipiosDto,
+  LocationIdSchema,
+  type LocationIdDto,
 } from './dto';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import type {
   GeocodingResult,
   SearchMunicipiosResult,
+  LocationResponse,
 } from './geocoding.service';
 
 @Controller('api/geocoding')
@@ -33,5 +36,14 @@ export class GeocodingController {
     body: SearchMunicipiosDto,
   ): Promise<SearchMunicipiosResult[]> {
     return await this.geocodingService.searchMunicipios(body.query);
+  }
+
+  @Post('data-by-location-id')
+  async getDataByLocationId(
+    @Body(new ZodValidationPipe(LocationIdSchema)) body: LocationIdDto,
+  ): Promise<LocationResponse> {
+    return await this.geocodingService.getDataByLocationId(
+      String(body.location_id),
+    );
   }
 }
