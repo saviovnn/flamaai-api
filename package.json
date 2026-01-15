@@ -82,6 +82,16 @@
       "**/*.(t|j)s"
     ],
     "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "setupFilesAfterEnv": ["<rootDir>/../jest.setup.ts"],
+    "moduleNameMapper": {
+      "^better-auth$": "<rootDir>/../__mocks__/better-auth.ts",
+      "^better-auth/node$": "<rootDir>/../__mocks__/better-auth.ts",
+      "^better-auth/adapters/drizzle$": "<rootDir>/../__mocks__/better-auth-adapters-drizzle.ts",
+      "^resend$": "<rootDir>/../__mocks__/resend.ts"
+    },
+    "transformIgnorePatterns": [
+      "node_modules/(?!(better-auth)/)"
+    ]
   }
 }

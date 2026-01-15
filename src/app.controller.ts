@@ -1,8 +1,19 @@
 import { Controller, Get, UseGuards, Req } from '@nestjs/common';
+import { AppService } from './app.service';
 import { AuthGuard } from './auth/auth.guard';
 import { AuthService } from './auth/auth.service';
 import type { Request } from 'express';
 import type { BetterAuthUser } from './auth/auth.types';
+
+@Controller()
+export class AppController {
+  constructor(private readonly appService: AppService) {}
+
+  @Get()
+  getHello(): string {
+    return this.appService.getHello();
+  }
+}
 
 @Controller('profile')
 export class ProfileController {
