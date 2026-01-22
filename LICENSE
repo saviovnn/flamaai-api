@@ -1,23 +1,40 @@
-Academic Non-Commercial License – TCC
-Version 1.0 – 2026
+Academic Non-Commercial License with Commercial Option
+Version 1.2 – 2026
 
-Copyright (c) 2026 Sávio Jenner Vianna Silva Rennó
+Copyright (c) 2026
+Sávio Jenner Vianna Silva Rennó
 
-Permission is hereby granted to view, use, copy, and modify this software
-for academic, educational, and research purposes only, provided that
-proper credit is given to the original author.
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to use, copy, modify, and distribute the Software solely for academic, educational, and research purposes, provided that the following conditions are met:
 
-Attribution must include:
+1. Attribution
+All copies or substantial portions of the Software must include:
+
 - Author name: Sávio Jenner Vianna Silva Rennó
 - Project name
-- Reference to this repository or publication
+- Reference to the original repository or publication
 
-Commercial use, including but not limited to selling, sublicensing,
-offering the software or its results as a paid service (SaaS),
-embedding in commercial products, or any use intended for monetary
-gain, is strictly prohibited without prior written permission from
-the author.
+2. Non-Commercial Restriction
+The Software may not be used, in whole or in part, for any commercial purpose, including but not limited to:
 
-Any unauthorized commercial use may result in legal action.
+- Selling, licensing, or sublicensing the Software
+- Providing the Software or its results as a paid service (SaaS, API, platform, etc.)
+- Embedding the Software in commercial or proprietary products
+- Any use intended for direct or indirect monetary gain
 
-This software is provided "as is", without warranty of any kind.
+3. Commercial Licensing Option
+Commercial use is not permitted under this license.
+
+However, the author offers the possibility of a separate commercial license.
+
+Any person or organization wishing to use this Software for commercial purposes must obtain prior written permission and a paid commercial license agreement from the copyright holder.
+
+Commercial inquiries:
+saviovnndev@hotmail.com
+
+4. Ownership
+This license does not transfer ownership of the Software.
+All rights not expressly granted are reserved by the author.
+
+5. Disclaimer
+THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY.
