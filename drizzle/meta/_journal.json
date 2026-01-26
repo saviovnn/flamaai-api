@@ -36,6 +36,13 @@
       "when": 1736723400000,
       "tag": "0004_enable_unaccent",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1736724000000,
+      "tag": "0005_add_location_address_fields",
+      "breakpoints": true
     }
   ]
 }

@@ -87,6 +87,9 @@ export interface LocationResponse {
   bioma: string;
   ibge_id: string;
   name: string;
+  publicPlace: string | null;
+  neighborhood: string | null;
+  state: string | null;
   lat: number;
   lng: number;
   preference: 'weather' | 'air';
@@ -295,6 +298,9 @@ export class GeocodingService {
       bioma: bioma[0]?.bioma || 'Desconhecido',
       ibge_id: locationData.cdMun,
       name: locationData.name,
+      publicPlace: locationData.publicPlace || null,
+      neighborhood: locationData.neighborhood || null,
+      state: locationData.state || null,
       lat: locationData.lat,
       lng: locationData.lng,
       preference: locationData.preference as 'weather' | 'air',
@@ -376,6 +382,9 @@ export class GeocodingService {
         biomaId: result.bioma_id,
         cdMun: result.ibge_id,
         name: cidade,
+        publicPlace: result.logradouro || null,
+        neighborhood: result.bairro || null,
+        state: result.estado || null,
         lat: result.lat,
         lng: result.lng,
         preference: preference,

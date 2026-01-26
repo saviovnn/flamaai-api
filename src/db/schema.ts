@@ -128,6 +128,9 @@ export const location = pgTable('location', {
     .notNull()
     .references(() => municipiosIbge.cdMun, { onDelete: 'cascade' }),
   name: text('name').notNull(),
+  publicPlace: text('public_place'),
+  neighborhood: text('neighborhood'),
+  state: varchar('state', { length: 2 }),
   lat: doublePrecision('lat').notNull(),
   lng: doublePrecision('lng').notNull(),
   preference: varchar('preference', { length: 10 }).notNull(),
