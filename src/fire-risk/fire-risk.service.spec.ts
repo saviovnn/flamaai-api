@@ -1,15 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { FireRiskService } from './fire-risk.service';
 import { DATABASE_CONNECTION } from '../db/app.module';
-import { NotFoundException } from '@nestjs/common';
-import * as schema from '../db/schema';
 
 describe('FireRiskService', () => {
   let service: FireRiskService;
   let mockDb: any;
 
   beforeEach(async () => {
-    // Mock do banco de dados
     mockDb = {
       select: jest.fn().mockReturnThis(),
       from: jest.fn().mockReturnThis(),
@@ -48,19 +45,17 @@ describe('FireRiskService', () => {
         week_end_date: new Date('2024-01-07'),
         dailyRisks: [],
         weekly_risk_mean: 0.5,
-        risk_level: 'regular',
+        risk_level: 'medio',
         rag_explanation: 'Test explanation',
         model_version: '1.0',
       };
 
       mockDb.limit.mockResolvedValue(mockLocation);
-      // Primeira chamada de insert (saveFireRisk)
       mockDb.insert.mockReturnValueOnce({
         values: jest.fn().mockReturnValue({
           returning: jest.fn().mockResolvedValue([mockFireRisk]),
         }),
       });
-      // Segunda chamada de insert (saveFireRiskWeatherData)
       mockDb.insert.mockReturnValueOnce({
         values: jest.fn().mockResolvedValue(undefined),
       });
@@ -81,19 +76,16 @@ describe('FireRiskService', () => {
     });
 
     it('should classify risk as low when mean <= 0.3', async () => {
-      // Mock Math.random para retornar valores baixos
       const originalRandom = Math.random;
       Math.random = jest.fn(() => 0.2);
 
       const mockLocation = [{ id: 'location-123' }];
       mockDb.limit.mockResolvedValue(mockLocation);
-      // Primeira chamada de insert (saveFireRisk)
       mockDb.insert.mockReturnValueOnce({
         values: jest.fn().mockReturnValue({
           returning: jest.fn().mockResolvedValue([{}]),
         }),
       });
-      // Segunda chamada de insert (saveFireRiskWeatherData)
       mockDb.insert.mockReturnValueOnce({
         values: jest.fn().mockResolvedValue(undefined),
       });
@@ -106,10 +98,11 @@ describe('FireRiskService', () => {
         '1.0',
       );
 
-      // Restaurar Math.random
       Math.random = originalRandom;
 
-      expect(['low', 'regular', 'high']).toContain(result.risk_level);
+      expect(['baixo', 'regular', 'medio', 'alto', 'critico']).toContain(
+        result.risk_level,
+      );
     });
   });
 
@@ -136,14 +129,12 @@ describe('FireRiskService', () => {
         },
       ];
 
-      // Primeira chamada (buscar fireRiskWeatherData)
       mockDb.select.mockReturnValueOnce({
         from: jest.fn().mockReturnValueOnce({
           where: jest.fn().mockResolvedValueOnce(mockFireRiskWeatherData),
         }),
       });
 
-      // Segunda chamada (buscar fireRisks)
       mockDb.select.mockReturnValueOnce({
         from: jest.fn().mockReturnValueOnce({
           where: jest.fn().mockResolvedValueOnce(mockFireRisks),
@@ -158,6 +149,5 @@ describe('FireRiskService', () => {
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe('fire-risk-1');
     });
-
   });
 });

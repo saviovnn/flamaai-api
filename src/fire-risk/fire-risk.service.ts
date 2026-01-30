@@ -47,7 +47,6 @@ export class FireRiskService {
     model_version: string,
   ): Promise<FireRiskResponse> {
     try {
-      // Buscar location pelo location_id
       const location = await this.db
         .select()
         .from(schema.location)
@@ -60,7 +59,6 @@ export class FireRiskService {
         );
       }
 
-      // Gerar dados mockados de risco
       const daily_risks: { day: string; risk: number }[] = [];
       const start = new Date(start_date);
       for (let i = 0; i < 7; i++) {
@@ -76,14 +74,13 @@ export class FireRiskService {
         (daily_risks.reduce((acc, curr) => acc + curr.risk, 0) / 7).toFixed(2),
       );
 
+      // Faixas alinhadas ao frontend (FireRiskCard): <20% baixo, 20-40% regular, 40-60% medio, 60-80% alto, >=80% critico
       const risk_level = (() => {
-        if (weekly_risk_mean <= 0.3) {
-          return 'low';
-        } else if (weekly_risk_mean > 0.3 && weekly_risk_mean < 0.8) {
-          return 'regular';
-        } else {
-          return 'high';
-        }
+        if (weekly_risk_mean < 0.2) return 'baixo';
+        if (weekly_risk_mean < 0.4) return 'regular';
+        if (weekly_risk_mean < 0.6) return 'medio';
+        if (weekly_risk_mean < 0.8) return 'alto';
+        return 'critico';
       })();
 
       const rag_explanation =
@@ -106,13 +103,10 @@ export class FireRiskService {
         model_version,
       };
 
-      // Salvar no banco
       await this.saveFireRisk(fireRiskToSave);
 
-      // Salvar relacionamento com weather data
       await this.saveFireRiskWeatherData(fire_risk_id, weather_data_ids);
 
-      // Retornar resposta
       return {
         weekly_risk_mean,
         risk_level,
@@ -135,7 +129,6 @@ export class FireRiskService {
       return [];
     }
 
-    // Buscar todos os registros de fireRiskWeatherData para os weather_data_ids fornecidos
     const fireRiskWeatherData: (typeof schema.fireRiskWeatherData.$inferSelect)[] =
       await this.db
         .select()
@@ -148,12 +141,10 @@ export class FireRiskService {
       return [];
     }
 
-    // Extrair fire_risk_ids únicos
     const fire_risk_ids = [
       ...new Set(fireRiskWeatherData.map((item) => item.fireRiskId)),
     ];
 
-    // Buscar todos os fireRisks correspondentes
     const fireRisks: (typeof schema.fireRisk.$inferSelect)[] = await this.db
       .select()
       .from(schema.fireRisk)
@@ -199,17 +190,19 @@ export class FireRiskService {
       return [];
     }
 
-    const fireRiskWeatherDataToInsert = weather_data_ids.map((weather_data_id) => ({
-      id: crypto.randomUUID(),
-      fireRiskId: fire_risk_id,
-      weatherDataId: weather_data_id,
-    }));
+    const fireRiskWeatherDataToInsert = weather_data_ids.map(
+      (weather_data_id) => ({
+        id: crypto.randomUUID(),
+        fireRiskId: fire_risk_id,
+        weatherDataId: weather_data_id,
+      }),
+    );
 
     await this.db
       .insert(schema.fireRiskWeatherData)
       .values(fireRiskWeatherDataToInsert);
 
-    return fireRiskWeatherDataToInsert.map(item => ({
+    return fireRiskWeatherDataToInsert.map((item) => ({
       id: item.id,
       fire_risk_id: item.fireRiskId,
       weather_data_id: item.weatherDataId,
