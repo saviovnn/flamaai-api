@@ -8,6 +8,7 @@ export const orchestratorSchema = z.object({
 
 export const orchestratorAllSchema = z.object({
   user_id: z.string().min(1),
+  search: z.string().optional(),
 });
 
 export const orchestratorSingleSchema = z.object({

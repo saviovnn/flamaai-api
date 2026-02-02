@@ -38,7 +38,7 @@ export class OrchestratorController {
   ): Promise<
     { id: string; name: string; risk_level: string; created_at: Date }[]
   > {
-    return await this.orchestratorService.getAll(body.user_id);
+    return await this.orchestratorService.getAll(body.user_id, body.search);
   }
 
   @Post('single')

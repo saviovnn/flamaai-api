@@ -66,23 +66,24 @@ describe('OrchestratorController', () => {
   });
 
   describe('getAll', () => {
-    it('should call orchestratorService.getAll with correct parameters', async () => {
+    const mockResponse: {
+      id: string;
+      name: string;
+      risk_level: string;
+      created_at: Date;
+    }[] = [
+      {
+        id: '1',
+        name: 'Location 1',
+        risk_level: 'high',
+        created_at: new Date(),
+      },
+    ];
+
+    it('should call orchestratorService.getAll with only user_id (trazer todos)', async () => {
       const mockBody: OrchestratorAllDto = {
         user_id: 'user123',
       };
-      const mockResponse: {
-        id: string;
-        name: string;
-        risk_level: string;
-        created_at: Date;
-      }[] = [
-        {
-          id: '1',
-          name: 'Location 1',
-          risk_level: 'high',
-          created_at: new Date(),
-        },
-      ];
 
       mockOrchestratorService.getAll.mockResolvedValue(mockResponse);
 
@@ -90,6 +91,41 @@ describe('OrchestratorController', () => {
 
       expect(mockOrchestratorService.getAll).toHaveBeenCalledWith(
         mockBody.user_id,
+        undefined,
+      );
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should call orchestratorService.getAll with search (nome ou data)', async () => {
+      const mockBody: OrchestratorAllDto = {
+        user_id: 'user123',
+        search: 'São Paulo',
+      };
+
+      mockOrchestratorService.getAll.mockResolvedValue(mockResponse);
+
+      const result = await controller.getAll(mockBody);
+
+      expect(mockOrchestratorService.getAll).toHaveBeenCalledWith(
+        mockBody.user_id,
+        mockBody.search,
+      );
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should call orchestratorService.getAll with search as date', async () => {
+      const mockBody: OrchestratorAllDto = {
+        user_id: 'user123',
+        search: '2025-02-02',
+      };
+
+      mockOrchestratorService.getAll.mockResolvedValue(mockResponse);
+
+      const result = await controller.getAll(mockBody);
+
+      expect(mockOrchestratorService.getAll).toHaveBeenCalledWith(
+        mockBody.user_id,
+        mockBody.search,
       );
       expect(result).toEqual(mockResponse);
     });
