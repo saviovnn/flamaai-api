@@ -16,7 +16,7 @@ import type {
 import type { MapResponse } from '../map/map.service';
 import type { WeatherResponse } from '../weather/weather.service';
 import type { FireRiskResponse } from '../fire-risk/fire-risk.service';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, and, sql } from 'drizzle-orm';
 import * as schema from '../db/schema';
 import { DATABASE_CONNECTION } from '../db/app.module';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
@@ -97,11 +97,49 @@ export class OrchestratorService {
     }
   }
 
+  private parseSearchDate(input: string): string | null {
+    const s = input.trim();
+    if (!s) return null;
+    // Americano: YYYY-MM-DD ou YYYY/MM/DD ou YYYY-MM/DD ou YYYY/MM-DD
+    const american = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+    if (american) {
+      const [, y, m, d] = american;
+      const month = m.padStart(2, '0');
+      const day = d.padStart(2, '0');
+      return `${y}-${month}-${day}`;
+    }
+    // Brasileiro: DD/MM/YYYY ou DD-MM-YYYY
+    const brazilian = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+    if (brazilian) {
+      const [, d, m, y] = brazilian;
+      const day = d.padStart(2, '0');
+      const month = m.padStart(2, '0');
+      return `${y}-${month}-${day}`;
+    }
+    return null;
+  }
+
   async getAll(
     user_id: string,
+    search?: string,
   ): Promise<
     { id: string; name: string; risk_level: string; created_at: Date }[]
   > {
+    const conditions = [eq(schema.location.userId, user_id)];
+    const trimmed = search?.trim();
+    if (trimmed) {
+      const dateNormalized = this.parseSearchDate(trimmed);
+      if (dateNormalized) {
+        conditions.push(
+          sql`DATE(${schema.location.createdAt}) = ${dateNormalized}`,
+        );
+      } else {
+        conditions.push(
+          sql`unaccent(${schema.location.name}) ILIKE unaccent(${'%' + trimmed + '%'})`,
+        );
+      }
+    }
+
     const data = await this.db
       .select({
         id: schema.location.id,
@@ -114,7 +152,7 @@ export class OrchestratorService {
         schema.fireRisk,
         eq(schema.location.id, schema.fireRisk.locationId),
       )
-      .where(eq(schema.location.userId, user_id))
+      .where(and(...conditions))
       .orderBy(desc(schema.fireRisk.createdAt));
 
     const locationMap = new Map<

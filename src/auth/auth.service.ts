@@ -10,6 +10,8 @@ import bcrypt from 'bcrypt';
 import {
   BetterAuthResponse,
   BetterAuthErrorResponse,
+  BetterAuthUser,
+  BetterAuthSession,
   RegisterResponse,
   LoginResponse,
   ForgotPasswordResponse,
@@ -50,7 +52,7 @@ export class AuthService {
       emailAndPassword: {
         enabled: true,
         password: {
-          // Configura o Better Auth para usar bcrypt (mesmo que usamos no reset)
+          // Configura o Better Auth para usar bcrypt
           hash: async (password: string) => {
             return await bcrypt.hash(password, 10);
           },
@@ -92,7 +94,6 @@ export class AuthService {
 
       if (!response.ok) {
         const errorData = data as BetterAuthErrorResponse;
-        // Better Auth pode retornar o erro em diferentes formatos
         const dataAny = data as Record<string, unknown>;
         const errorMessage =
           errorData?.error ||
@@ -152,7 +153,6 @@ export class AuthService {
           };
         }
       } else {
-        // Se não for JSON, retorna o texto da resposta
         return {
           error: text || 'Erro ao fazer login',
           details: `Resposta não é JSON. Status: ${response.status}`,
@@ -161,7 +161,6 @@ export class AuthService {
 
       if (!response.ok) {
         const errorData = data as BetterAuthErrorResponse;
-        // Better Auth pode retornar o erro em diferentes formatos
         const dataAny = data as Record<string, unknown>;
         const errorMessage =
           errorData?.error ||
@@ -453,5 +452,102 @@ export class AuthService {
       created_at: user.createdAt,
       updated_at: user.updatedAt,
     }));
+  }
+
+  private static readonly MAX_IMAGE_BASE64_LENGTH = 10 * 1024 * 1024; // ~10MB
+
+  /**
+   * Obtém sessão e usuário a partir do header Authorization: Bearer <token>.
+   * Usado quando getSession (cookie) retorna null mas o front envia Bearer.
+   */
+  async getSessionFromBearerToken(
+    authHeader: string | undefined,
+  ): Promise<{ user: BetterAuthUser; session: BetterAuthSession } | null> {
+    if (!authHeader?.startsWith('Bearer ')) return null;
+    const token = authHeader.slice(7).trim();
+    if (!token) return null;
+
+    const session = await this.db.query.sessions.findFirst({
+      where: and(
+        eq(schema.sessions.token, token),
+        gt(schema.sessions.expiresAt, new Date()),
+      ),
+    });
+    if (!session) return null;
+
+    const user = await this.db.query.users.findFirst({
+      where: eq(schema.users.id, session.userId),
+    });
+    if (!user) return null;
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        email_verified: user.emailVerified,
+        image: user.image ?? undefined,
+        created_at: user.createdAt,
+        updated_at: user.updatedAt,
+      },
+      session: {
+        id: session.id,
+        token: session.token,
+        expires_at: session.expiresAt,
+        user_id: session.userId,
+        ip_address: session.ipAddress ?? undefined,
+        user_agent: session.userAgent ?? undefined,
+        created_at: session.createdAt,
+        updated_at: session.updatedAt,
+      },
+    };
+  }
+
+  async updateProfileImage(
+    userId: string,
+    image: string | null | undefined,
+  ): Promise<{ user?: BetterAuthUser; error?: string }> {
+    if (image !== undefined && image !== null) {
+      if (typeof image !== 'string') {
+        return { error: 'Imagem inválida' };
+      }
+      if (image.length > AuthService.MAX_IMAGE_BASE64_LENGTH) {
+        return {
+          error: 'Imagem muito grande. Use uma imagem menor (máx. ~7MB).',
+        };
+      }
+    }
+
+    const [updated] = await this.db
+      .update(schema.users)
+      .set({
+        image: image ?? null,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.users.id, userId))
+      .returning({
+        id: schema.users.id,
+        name: schema.users.name,
+        email: schema.users.email,
+        emailVerified: schema.users.emailVerified,
+        image: schema.users.image,
+        createdAt: schema.users.createdAt,
+        updatedAt: schema.users.updatedAt,
+      });
+
+    if (!updated) {
+      return { error: 'Usuário não encontrado' };
+    }
+
+    const user: BetterAuthUser = {
+      id: updated.id,
+      name: updated.name,
+      email: updated.email,
+      email_verified: updated.emailVerified,
+      image: updated.image ?? undefined,
+      created_at: updated.createdAt,
+      updated_at: updated.updatedAt,
+    };
+    return { user };
   }
 }

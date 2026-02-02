@@ -20,10 +20,28 @@ export class AuthGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
 
-    // Verifica a sessão usando a API do Better Auth
-    const sessionData = (await this.authService.auth.api.getSession({
+    // 1) Tenta sessão via Better Auth (cookie)
+    let sessionData = (await this.authService.auth.api.getSession({
       headers: request.headers as unknown as Headers,
     })) as SessionResponse | null;
+
+    // 2) Se não houver cookie, tenta Authorization: Bearer (front envia token no header)
+    if (!sessionData) {
+      sessionData = await this.authService.getSessionFromBearerToken(
+        request.headers.authorization,
+      );
+    }
+
+    // 3) Fallback: token no body (ex.: PATCH profile/image com body.token)
+    if (!sessionData && request.body?.token) {
+      const bodyToken =
+        typeof request.body.token === 'string' ? request.body.token : undefined;
+      if (bodyToken) {
+        sessionData = await this.authService.getSessionFromBearerToken(
+          `Bearer ${bodyToken}`,
+        );
+      }
+    }
 
     if (!sessionData) {
       throw new UnauthorizedException('Sessão inválida ou expirada');
