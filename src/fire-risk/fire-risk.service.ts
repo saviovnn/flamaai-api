@@ -74,10 +74,10 @@ export class FireRiskService {
         (daily_risks.reduce((acc, curr) => acc + curr.risk, 0) / 7).toFixed(2),
       );
 
-      // Faixas alinhadas ao frontend (FireRiskCard): <20% baixo, 20-40% regular, 40-60% medio, 60-80% alto, >=80% critico
+      // Faixas alinhadas ao frontend: <20% minimo, 20-40% baixo, 40-60% medio, 60-80% alto, >=80% critico
       const risk_level = (() => {
-        if (weekly_risk_mean < 0.2) return 'baixo';
-        if (weekly_risk_mean < 0.4) return 'regular';
+        if (weekly_risk_mean < 0.2) return 'minimo';
+        if (weekly_risk_mean < 0.4) return 'baixo';
         if (weekly_risk_mean < 0.6) return 'medio';
         if (weekly_risk_mean < 0.8) return 'alto';
         return 'critico';

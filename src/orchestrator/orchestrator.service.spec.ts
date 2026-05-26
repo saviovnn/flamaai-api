@@ -104,7 +104,7 @@ describe('OrchestratorService', () => {
       };
 
       const mockFireRiskResult = {
-        risk_level: 'regular',
+        risk_level: 'baixo',
         rag_explanation: 'Test explanation',
         daily_risks: [],
         weekly_risk_mean: 0.5,
@@ -135,7 +135,6 @@ describe('OrchestratorService', () => {
         'location-123',
       );
     });
-
   });
 
   describe('getAll', () => {
@@ -145,7 +144,7 @@ describe('OrchestratorService', () => {
           id: 'location-1',
           name: 'São Paulo',
           createdAt: new Date(),
-          riskLevel: 'regular',
+          riskLevel: 'baixo',
         },
         {
           id: 'location-2',
@@ -167,7 +166,6 @@ describe('OrchestratorService', () => {
       expect(result[0]).toHaveProperty('risk_level');
       expect(result[0]).toHaveProperty('created_at');
     });
-
   });
 
   describe('getSingle', () => {
@@ -203,7 +201,7 @@ describe('OrchestratorService', () => {
           locationId: 'location-123',
           dailyRisks: [{ day: '2024-01-01', risk: 0.5 }],
           weekly_risk_mean: 0.5,
-          risk_level: 'regular',
+          risk_level: 'baixo',
           rag_explanation: 'Test',
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -228,8 +226,7 @@ describe('OrchestratorService', () => {
       expect(result.map_result).toEqual(mockMapResult);
       expect(result.weather_result).toEqual(mockWeatherResult);
       expect(result.fire_risk_result).toBeDefined();
-      expect(result.fire_risk_result?.risk_level).toBe('regular');
+      expect(result.fire_risk_result?.risk_level).toBe('baixo');
     });
-
   });
 });

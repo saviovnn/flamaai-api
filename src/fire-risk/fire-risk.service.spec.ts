@@ -100,7 +100,7 @@ describe('FireRiskService', () => {
 
       Math.random = originalRandom;
 
-      expect(['baixo', 'regular', 'medio', 'alto', 'critico']).toContain(
+      expect(['minimo', 'baixo', 'medio', 'alto', 'critico']).toContain(
         result.risk_level,
       );
     });
@@ -121,7 +121,7 @@ describe('FireRiskService', () => {
           week_end_date: new Date(),
           dailyRisks: [],
           weekly_risk_mean: 0.5,
-          risk_level: 'regular',
+          risk_level: 'baixo',
           rag_explanation: 'Test',
           model_version: '1.0',
           createdAt: new Date(),
