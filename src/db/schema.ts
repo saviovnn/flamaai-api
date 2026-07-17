@@ -15,22 +15,25 @@ import {
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
+/** Relógio de parede em America/Sao_Paulo (timestamp sem timezone). */
+export const nowBrasilia = sql`(now() AT TIME ZONE 'America/Sao_Paulo')`;
+
 export const users = pgTable('users', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
   emailVerified: boolean('email_verified').notNull().default(false),
   image: text('image'),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  createdAt: timestamp('created_at').notNull().default(nowBrasilia),
+  updatedAt: timestamp('updated_at').notNull().default(nowBrasilia),
 });
 
 export const sessions = pgTable('sessions', {
   id: text('id').primaryKey(),
   expiresAt: timestamp('expires_at').notNull(),
   token: text('token').notNull().unique(),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  createdAt: timestamp('created_at').notNull().default(nowBrasilia),
+  updatedAt: timestamp('updated_at').notNull().default(nowBrasilia),
   ipAddress: text('ip_address'),
   userAgent: text('user_agent'),
   userId: text('user_id')
@@ -52,8 +55,8 @@ export const accounts = pgTable('accounts', {
   refreshTokenExpiresAt: timestamp('refresh_token_expires_at'),
   scope: text('scope'),
   password: text('password'),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  createdAt: timestamp('created_at').notNull().default(nowBrasilia),
+  updatedAt: timestamp('updated_at').notNull().default(nowBrasilia),
 });
 
 export const verifications = pgTable('verifications', {
@@ -61,8 +64,8 @@ export const verifications = pgTable('verifications', {
   identifier: text('identifier').notNull(),
   value: text('value').notNull(),
   expiresAt: timestamp('expires_at').notNull(),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  createdAt: timestamp('created_at').notNull().default(nowBrasilia),
+  updatedAt: timestamp('updated_at').notNull().default(nowBrasilia),
 });
 
 export const spatialRefSys = pgTable(
@@ -134,7 +137,7 @@ export const location = pgTable('location', {
   lat: doublePrecision('lat').notNull(),
   lng: doublePrecision('lng').notNull(),
   preference: varchar('preference', { length: 10 }).notNull(),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
+  createdAt: timestamp('created_at').notNull().default(nowBrasilia),
 });
 
 export const fireRisk = pgTable('fire_risk', {
@@ -149,7 +152,7 @@ export const fireRisk = pgTable('fire_risk', {
   risk_level: varchar('risk_level', { length: 20 }).notNull(),
   rag_explanation: text('rag_explanation').notNull(),
   model_version: text('model_version').notNull(),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
+  createdAt: timestamp('created_at').notNull().default(nowBrasilia),
 });
 
 export const weatherData = pgTable('weather_data', {
@@ -180,7 +183,7 @@ export const weatherData = pgTable('weather_data', {
   ozone: doublePrecision('ozone').notNull(),
   aerosol_optical_depth: doublePrecision('aerosol_optical_depth').notNull(),
   dust: doublePrecision('dust').notNull(),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
+  createdAt: timestamp('created_at').notNull().default(nowBrasilia),
 });
 
 export const fireRiskWeatherData = pgTable('fire_risk_weather_data', {
@@ -191,5 +194,5 @@ export const fireRiskWeatherData = pgTable('fire_risk_weather_data', {
   weatherDataId: text('weather_data_id')
     .notNull()
     .references(() => weatherData.id, { onDelete: 'cascade' }),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
+  createdAt: timestamp('created_at').notNull().default(nowBrasilia),
 });
