@@ -19,7 +19,7 @@ export class FireRiskController {
       new Date(body.start_date),
       new Date(body.end_date),
       body.weather_data_ids,
-      String(body.model_version),
+      body.model_version ? String(body.model_version) : undefined,
     );
   }
 

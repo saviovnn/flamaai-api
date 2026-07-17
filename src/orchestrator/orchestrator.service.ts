@@ -73,7 +73,6 @@ export class OrchestratorService {
           return new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
         })(),
         weather.weather_data_ids,
-        '1.0.0',
       );
 
       return {

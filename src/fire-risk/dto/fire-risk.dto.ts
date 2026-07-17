@@ -13,7 +13,7 @@ export const fireRiskSchema = z.object({
   start_date: z.coerce.date({ message: startDateErrorMessage }),
   end_date: z.coerce.date({ message: endDateErrorMessage }),
   weather_data_ids: z.array(z.string({ message: weatherDataIdsErrorMessage })),
-  model_version: z.string({ message: modelVersionErrorMessage }),
+  model_version: z.string({ message: modelVersionErrorMessage }).optional(),
 });
 
 export type FireRiskDto = z.infer<typeof fireRiskSchema>;
